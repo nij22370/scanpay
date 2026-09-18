@@ -1,0 +1,53 @@
+{
+  "name": "scanpay",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@radix-ui/react-slot": "^1.3.3",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@supabase/supabase-js": "2.49.0",
+    "@tanstack/react-query": "^5.62.0",
+    "bwip-js": "^3.1.3",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.17",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.7.1",
+    "lucide-react": "^0.468.0",
+    "nepali-date": "^0.1.3",
+    "next": "14.2.5",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.0",
+    "tailwind-merge": "^2.5.5",
+    "zod": "^3.23.8",
+    "zustand": "^5.0.3",
+    "zxing-wasm": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.5",
+    "eslint-config-prettier": "^9.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.7.0"
+  },
+  "overrides": {
+    "eslint-import-resolver-typescript": "3.8.3"
+  }
+}
