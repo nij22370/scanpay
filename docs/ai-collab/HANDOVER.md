@@ -8,9 +8,13 @@
 
 ```mermaid
 graph LR
-    DONE["✅ Day 1<br/>Scaffold Complete"] --> TODO["⬜ Day 2+<br/>Auth, POS, Payments"]
+    DONE1["✅ Day 1<br/>Scaffold"] --> DONE2["✅ Day 2<br/>Auth + Layout"]
+    DONE2 --> DONE3["✅ Day 3<br/>Foundation"]
+    DONE3 --> TODO["⬜ Day 4+<br/>POS, Payments"]
 
-    style DONE fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE1 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE2 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE3 fill:#22c55e,stroke:#16a34a,color:#fff
     style TODO fill:#3b82f6,stroke:#2563eb,color:#fff
 ```
 
@@ -18,8 +22,9 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Day 1 complete — scaffold + CI pipeline passing |
-| **Last commit** | `e48483d` on `main`, pushed to `origin/main` |
+| **Status** | ✅ Day 2 & 3 complete — auth, responsive layout, Zod validators, types, VAT/Nepali date utils |
+| **Last commit** | `0a8e9fc` on `main` (Day 1 scaffold) |
+| **Pending** | Day 2 & 3 changes uncommitted — user will verify and commit manually |
 | **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
 
 ---
@@ -46,18 +51,43 @@ graph LR
 - [x] `public/fonts/` folder with manifest
 - [x] `npm run typecheck`, `npm run lint`, `npm run build`, `npm run dev` all pass
 
+## ✅ Completed (Day 2 — Auth + Responsive Layout Shell)
+
+- [x] Installed `@supabase/ssr@0.5.2` for cookie-based server client
+- [x] `src/lib/supabase/client.ts` — `createBrowserClient` using `@supabase/ssr`
+- [x] `src/lib/supabase/server.ts` — `createServerClient` with Next.js cookie handling
+- [x] `src/lib/supabase/middleware.ts` — `updateSession` helper for route protection
+- [x] `middleware.ts` — protects all dashboard routes, allows `/login` and `/slip/[id]` without auth
+- [x] `src/app/(auth)/login/page.tsx` — email + password login with RHF + Zod validation
+- [x] `src/store/authStore.ts` — Zustand store for cashier auth state
+- [x] `src/app/(dashboard)/layout.tsx` — responsive layout shell (mobile: header + bottom nav, desktop: 240px sidebar)
+- [x] Framer Motion page transitions (0.2s opacity fade)
+- [x] Lucide icons: ShoppingCart, Package, Archive, Users, BarChart2, Settings
+
+## ✅ Completed (Day 3 — Foundation Layer)
+
+- [x] `src/app/providers.tsx` — TanStack Query provider with 5-minute staleTime
+- [x] `src/validators/product.schema.ts` — ProductSchema, CreateProductSchema, UpdateProductSchema
+- [x] `src/validators/transaction.schema.ts` — TransactionSchema, CreateTransactionSchema
+- [x] `src/validators/split.schema.ts` — SplitSessionSchema, SplitParticipantSchema, CreateSplitSchema
+- [x] `src/validators/index.ts` — re-exports + backward-compatible aliases
+- [x] `src/types/product.ts` — Product, ProductWithLowStock interfaces
+- [x] `src/types/transaction.ts` — Transaction, TransactionWithItems, TransactionItem
+- [x] `src/types/split.ts` — SplitParticipant, SplitSession, SplitType, SplitSessionWithParticipants
+- [x] `src/types/slip.ts` — SlipData, SlipItem interfaces
+- [x] `src/components/ErrorBoundary.tsx` — class component with retry button
+- [x] `src/lib/vat.ts` — VAT_RATE, calculateVAT, calculateTotal, formatCurrency
+- [x] `src/lib/nepali-date.ts` — NepaliDate class + convertToBS, formatToBS, formatToBSLong
+
 ## ⬜ Not Yet Started
 
 - [ ] Set up Supabase project and run migrations (see `docs/supabase-setup.md`)
-- [ ] Implement authentication (login page)
 - [ ] Build POS dashboard components
 - [ ] Implement payment gateway integrations (eSewa, Khalti, FonePay)
 - [ ] Build split-bill feature
 - [ ] Implement transaction and slip generation
-- [ ] Set up Zustand stores
-- [ ] Implement TanStack Query hooks
-- [ ] Zod validators for all forms
 - [ ] Product, inventory, reports, and admin pages
+- [ ] Connect login to actual Supabase auth backend (requires configured Supabase project)
 
 ## 🚫 Blockers
 
@@ -65,14 +95,15 @@ graph LR
 
 ## 👣 Next Steps
 
-1. Configure Supabase project and create tables (`products`, `transactions`, `split_sessions`, `split_participants`)
-2. Start with authentication flow (login page)
-3. Build core POS interface with payment integration
+1. Verify and commit Day 2 & 3 changes (user will do manually)
+2. Configure Supabase project and create tables (`products`, `transactions`, `split_sessions`, `split_participants`)
+3. Test login flow with real Supabase auth
+4. Build core POS interface with payment integration
 
 ## ❓ Open Questions
 
-- Supabase schema finalization pending PRD review
-- Will Shadcn UI be initialized via CLI or manually? (Currently manual placeholder setup)
+- Supabase project configuration pending — need actual `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Payment gateway credentials needed for eSewa, Khalti, FonePay integration
 
 ---
 
