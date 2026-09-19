@@ -166,6 +166,21 @@ graph LR
 
 ---
 
+## ADR-010: @supabase/ssr for Cookie-Based Auth
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-19 |
+
+**Context**: Next.js 14 App Router requires cookie-based session handling for Supabase auth; the old `@supabase/auth-helpers-nextjs` package is deprecated.
+
+**Decision**: Use `@supabase/ssr@0.5.2` for server-side client creation with cookie handling.
+
+**Consequences**: Server components and middleware can access the session via cookies; middleware protects routes by checking session validity.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

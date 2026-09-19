@@ -1,14 +1,16 @@
 import NepaliDateLib from "nepali-date";
 
-/**
- * Lightweight wrapper around the `nepali-date` package.
- *
- * The published `nepali-date` package exposes a small date-range helper.
- * ScanPay needs a Bikram Sambat (BS) date formatter for receipts, so this
- * wrapper exposes a stable `NepaliDate` class that the rest of the app can
- * import from `@/lib/nepali-date` without depending on the underlying
- * package's internal shape.
- */
+function getNepaliDateInstance(date: Date) {
+  try {
+    const NepaliDateConstructor =
+      // @ts-expect-error - handling CJS/ESM default interop
+      NepaliDateLib?.default || NepaliDateLib;
+    return new NepaliDateConstructor(date);
+  } catch {
+    return null;
+  }
+}
+
 export class NepaliDate {
   private date: Date;
 
@@ -21,15 +23,44 @@ export class NepaliDate {
   }
 
   format(pattern: string = "YYYY-MM-DD"): string {
-    const nd = new NepaliDateLib(this.date.toISOString().slice(0, 10));
-    try {
-      return nd.format(pattern);
-    } catch {
-      // Fallback to ISO date when the underlying library cannot parse the
-      // value — keeps receipts rendering instead of throwing.
-      return this.date.toISOString().slice(0, 10);
+    const instance = getNepaliDateInstance(this.date);
+    if (instance && typeof instance.format === "function") {
+      try {
+        return instance.format(pattern);
+      } catch {
+        return this.date.toISOString().slice(0, 10);
+      }
     }
+    return this.date.toISOString().slice(0, 10);
   }
 }
 
 export default NepaliDate;
+
+export function convertToBS(date: Date): string {
+  const instance = getNepaliDateInstance(date);
+  if (instance && typeof instance.format === "function") {
+    try {
+      return instance.format("YYYY-MM-DD");
+    } catch {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+export function formatToBS(date: Date, pattern: string = "YYYY-MM-DD"): string {
+  const instance = getNepaliDateInstance(date);
+  if (instance && typeof instance.format === "function") {
+    try {
+      return instance.format(pattern);
+    } catch {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+export function formatToBSLong(date: Date): string {
+  return formatToBS(date, "YYYY MMMM DD");
+}

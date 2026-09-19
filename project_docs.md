@@ -20,6 +20,93 @@
 - **`docs/ai-collab/ROLLBACK.md`** — Rollback procedures and incident response
 - **`docs/supabase-setup.md`** — Supabase project creation, schema migration, and RLS verification
 
+## Day 2 — Auth + Responsive Layout Shell
+
+### 2.1 Supabase Auth with SSR Support
+- Installed `@supabase/ssr@0.5.2` for cookie-based server client
+- `src/lib/supabase/client.ts` — `createBrowserClient` using `@supabase/ssr`
+- `src/lib/supabase/server.ts` — `createServerClient` with Next.js cookie handling for App Router
+- `src/lib/supabase/middleware.ts` — `updateSession` helper for route protection
+
+### 2.2 Route Protection Middleware
+- `middleware.ts` at project root — protects all `/pos`, `/products`, `/inventory`, `/split`, `/reports`, `/admin` routes
+- Redirects unauthenticated users to `/login`
+- Allows `/login` and `/slip/[id]` without authentication
+- Redirects authenticated users away from `/login` to `/pos`
+
+### 2.3 Login Page
+- `src/app/(auth)/login/page.tsx` — email + password login form using React Hook Form + Zod
+- Validates email format and password minimum 8 characters
+- Stores cashier name from Supabase session in Zustand auth store
+- Redirects to `/pos` on successful login
+
+### 2.4 Auth State Management
+- `src/store/authStore.ts` — Zustand store with `persist` middleware
+- Stores `cashierId`, `cashierName`, `cashierEmail`, `isAuthenticated`
+- `setAuth()` and `clearAuth()` actions
+
+### 2.5 Responsive Layout Shell
+- `src/app/(dashboard)/layout.tsx` — fully responsive layout with:
+  - Mobile (< 1024px): top header with hamburger menu, store name, cashier avatar + bottom nav with 5 tabs
+  - Desktop (≥ 1024px): fixed 240px left sidebar with nav items + logout at bottom
+  - 5 nav items: POS, Products, Inventory, Split, Reports
+  - Desktop-only Admin nav item
+  - Framer Motion page transitions (opacity 0→1, 0.2s)
+  - Lucide icons: ShoppingCart, Package, Archive, Users, BarChart2, Settings
+
+### 2.6 Verification
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS (1 pre-existing warning)
+- `npm run build` — PASS (12 routes)
+
+---
+
+## Day 3 — Supabase Types + Global Providers
+
+### 3.1 Global Providers
+- `src/app/providers.tsx` — client component wrapping `QueryClientProvider`
+- TanStack Query `QueryClient` with `staleTime: 5 minutes`, `retry: 1`
+- Wrapped root layout with `<Providers>` instead of `<QueryProvider>`
+
+### 3.2 Zod Validators (matching PRD database schema)
+- `src/validators/product.schema.ts` — `ProductSchema`, `CreateProductSchema`, `UpdateProductSchema`
+- `src/validators/transaction.schema.ts` — `TransactionSchema`, `CreateTransactionSchema`
+- `src/validators/split.schema.ts` — `SplitSessionSchema`, `SplitParticipantSchema`, `CreateSplitSchema` (total: positive, people_count: 2-10, split_type: enum)
+- `src/validators/index.ts` — re-exports all schemas + login schema, backward-compatible aliases (`productSchema`, `transactionSchema`, `splitSchema`, `ProductFormData`)
+
+### 3.3 Shared Types
+- `src/types/product.ts` — `Product` + `ProductWithLowStock` interface
+- `src/types/transaction.ts` — `Transaction`, `TransactionWithItems`, `TransactionItem` interfaces
+- `src/types/split.ts` — `SplitParticipant`, `SplitSession`, `SplitType`, `SplitSessionWithParticipants`
+- `src/types/slip.ts` — `SlipData`, `SlipItem` interfaces
+- `src/types/index.ts` — exports all types as named exports
+
+### 3.4 Error Boundary
+- `src/components/ErrorBoundary.tsx` — React class component
+- Shows friendly "Something went wrong" message with "Try Again" button
+- Accepts optional `fallback` prop
+
+### 3.5 VAT Helpers
+- `src/lib/vat.ts` — exports:
+  - `VAT_RATE = 0.13`
+  - `calculateVAT(amount: number): number`
+  - `calculateTotal(subtotal: number, discount: number, vatApplicable: boolean): { vat: number, total: number }`
+  - `formatCurrency(amount: number): string` — formats as NPR
+
+### 3.6 Nepali Date Utilities
+- `src/lib/nepali-date.ts` — exports:
+  - `NepaliDate` class with `format()` method (backward compatible)
+  - `convertToBS(date: Date): string` — returns "YYYY-MM-DD" BS date
+  - `formatToBS(date: Date, pattern?: string): string`
+  - `formatToBSLong(date: Date): string` — "YYYY MMMM DD" format
+
+### 3.7 Verification
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm run build` — PASS (12 routes)
+
+---
+
 ## Day 1 — Project Scaffolding
 
 ### 1.1 Config Files
