@@ -181,6 +181,28 @@ graph LR
 
 ---
 
+## ADR-011: Code Engine — zxing-wasm/reader Subpath + Dynamic Import
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-20 |
+
+**Context**: BarcodeScanner needs WASM-based barcode/QR reading in the browser. `zxing-wasm` ships three subpaths (`full` ~1.46 MiB, `reader` ~1.04 MiB, `writer` ~636 KiB). The scanner only reads — never writes — so including the full module wastes ~420 KiB. Additionally, WASM and `navigator.mediaDevices` crash during SSR.
+
+**Decision**:
+1. Import `readBarcodes` from `zxing-wasm/reader` (not `zxing-wasm`) to pull only the reader WASM binary.
+2. Wrap the scanner with `next/dynamic` + `ssr: false` via `DynamicBarcodeScanner.tsx`.
+3. Let zxing-wasm's default jsDelivr CDN serve the `.wasm` file (no self-hosting needed at this stage).
+
+**Consequences**: Smaller client bundle. Scanner component is only loadable client-side. Future self-hosting of `.wasm` is possible via `prepareZXingModule` if CDN latency becomes an issue.
+### 2026-09-20 — zxing-wasm binary hosting
+- Decision: Self-host the .wasm file in `public/` instead of loading from CDN.
+- Alternatives considered: CDN loading (simpler but adds network dependency on a critical checkout‑path feature).
+- Why: PRD §13 non‑functional requirements target offline resilience and 4G performance; a CDN round‑trip risks both on a spotty connection.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

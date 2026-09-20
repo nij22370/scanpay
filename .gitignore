@@ -40,3 +40,7 @@ next-env.d.ts
 
 # os
 Thumbs.db
+
+# stitch specifications
+docs/stitch/
+
