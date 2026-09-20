@@ -20,3 +20,5 @@ export type Product = z.infer<typeof ProductSchema>;
 export interface ProductWithLowStock extends Product {
   is_low_stock: boolean;
 }
+
+export type CodeType = "qr" | "ean13" | "code128" | "datamatrix";

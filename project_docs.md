@@ -106,6 +106,12 @@
 - `npm run build` — PASS (12 routes)
 
 ---
+## Day 4‑5 — QR & Barcode Generation
+- Implemented QR code generation (`src/components/codes/QRGenerator.tsx`) using **qrcode** with PNG download.
+- Implemented barcode generation (`src/components/codes/BarcodeGenerator.tsx`) using **bwip‑js** (EAN‑13, Code 128, DataMatrix) with PNG download.
+- Added `/codes` page (`src/app/(dashboard)/codes/page.tsx`) with tabs for QR and barcode generation.
+- Updated barrel export (`src/components/codes/index.ts`).
+- Updated types (`src/types/product.ts`) with `CodeType` enum.
 
 ## Day 1 — Project Scaffolding
 
@@ -155,6 +161,12 @@ Created all required folders with placeholder `index.ts` files:
 ### 1.8 Git
 - `git init` → `git add -A` (103 files, `.env.local` correctly excluded)
 - Commit `e48483d` on `main`, pushed to `origin/main`
+
+## Day 6 — Camera Barcode/QR Scanner
+- Added camera‑based scanner (`src/components/pos/BarcodeScanner.tsx`) using **zxing‑wasm/reader**.
+- Wrapped scanner in `DynamicBarcodeScanner.tsx` with `next/dynamic` and `ssr:false`.
+- Provided manual text entry fallback and success beep.
+- Updated documentation and test checklist accordingly.
 
 ## Standard Development Rules
 

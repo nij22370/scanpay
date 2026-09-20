@@ -10,11 +10,15 @@
 graph LR
     DONE1["✅ Day 1<br/>Scaffold"] --> DONE2["✅ Day 2<br/>Auth + Layout"]
     DONE2 --> DONE3["✅ Day 3<br/>Foundation"]
-    DONE3 --> TODO["⬜ Day 4+<br/>POS, Payments"]
+    DONE3 --> DONE4["✅ Days 4-5<br/>Code Engine"]
+    DONE4 --> DONE5["✅ Day 6<br/>Scanner"]
+    DONE5 --> TODO["⬜ Day 7+<br/>POS, Payments"]
 
     style DONE1 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE2 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE3 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE4 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE5 fill:#22c55e,stroke:#16a34a,color:#fff
     style TODO fill:#3b82f6,stroke:#2563eb,color:#fff
 ```
 
@@ -22,10 +26,10 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Day 2 & 3 complete — auth, responsive layout, Zod validators, types, VAT/Nepali date utils |
-| **Last commit** | `0a8e9fc` on `main` (Day 1 scaffold) |
-| **Pending** | Day 2 & 3 changes uncommitted — user will verify and commit manually |
-| **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
+| **Status** | ✅ Days 1–6 complete — scaffold, auth, layout, foundation, code engine, camera scanner |
+| **Last commit** | `1603529` on `main` (Days 1–3) |
+| **Pending** | Days 4–6 on `feat/code-engine-scanner` branch — user will verify and commit |
+| **CI** | `tsc --noEmit` ✅ · `next lint` ✅ |
 
 ---
 
@@ -79,6 +83,20 @@ graph LR
 - [x] `src/lib/vat.ts` — VAT_RATE, calculateVAT, calculateTotal, formatCurrency
 - [x] `src/lib/nepali-date.ts` — NepaliDate class + convertToBS, formatToBS, formatToBSLong
 
+## ✅ Completed (Days 4–5 — QR + Barcode Generation)
+
+- [x] `src/types/product.ts` — added `CodeType` union (`qr | ean13 | code128 | datamatrix`)
+- [x] `src/components/codes/QRGenerator.tsx` — QR code generation via `qrcode` package, PNG download, label support
+- [x] `src/components/codes/BarcodeGenerator.tsx` — barcode generation via `bwip-js` (ean13, code128, datamatrix), EAN-13 validation, PNG download
+- [x] `src/app/(dashboard)/codes/page.tsx` — Generate/My Codes tabs, responsive 2-col layout, form with type selector
+- [x] `src/components/codes/index.ts` — updated barrel exports
+
+## ✅ Completed (Day 6 — Camera Barcode/QR Scanner)
+
+- [x] `src/components/pos/BarcodeScanner.tsx` — camera scanner using `zxing-wasm/reader`, scanning overlay with corner brackets, 880Hz success beep, manual entry fallback
+- [x] `src/components/pos/DynamicBarcodeScanner.tsx` — `next/dynamic` wrapper with `ssr: false`
+- [x] `docs/ai-collab/DECISIONS.md` — ADR-011: zxing-wasm/reader subpath + dynamic import
+
 ## ⬜ Not Yet Started
 
 - [ ] Set up Supabase project and run migrations (see `docs/supabase-setup.md`)
@@ -95,10 +113,11 @@ graph LR
 
 ## 👣 Next Steps
 
-1. Verify and commit Day 2 & 3 changes (user will do manually)
-2. Configure Supabase project and create tables (`products`, `transactions`, `split_sessions`, `split_participants`)
-3. Test login flow with real Supabase auth
+1. Commit Days 4–5 files: `git add <files> && git commit -m "feat(codes): add QR and barcode generator with PNG download"`
+2. Commit Day 6 files: `git add <files> && git commit -m "feat(scanner): add camera barcode/QR scanner with zxing-wasm and manual fallback"`
+3. Configure Supabase project and create tables
 4. Build core POS interface with payment integration
+5. Test camera scanner on a mobile device with rear camera
 
 ## ❓ Open Questions
 
