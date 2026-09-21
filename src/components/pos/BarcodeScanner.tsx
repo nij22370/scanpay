@@ -7,8 +7,14 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { readBarcodes } from "zxing-wasm/reader";
+import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader";
 import { cn } from "@/lib/utils";
+
+prepareZXingModule({
+  overrides: {
+    locateFile: (path: string) => `/wasm/${path}`,
+  },
+});
 
 const SCAN_INTERVAL_MS = 300;
 const BEEP_FREQUENCY_HZ = 880;
@@ -76,6 +82,14 @@ export function BarcodeScanner({
     onErrorRef.current = onError;
   }, [onError]);
 
+  const stopCamera = useCallback(() => {
+    const currentStream = streamRef.current;
+    if (currentStream) {
+      currentStream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
   // Camera lifecycle: start/stop based on `active` and not in manual mode
   useEffect(() => {
     if (!active || isManualEntryMode) {
@@ -123,7 +137,7 @@ export function BarcodeScanner({
       isMounted = false;
       stopCamera();
     };
-  }, [active, isManualEntryMode]);
+  }, [active, isManualEntryMode, stopCamera]);
 
   // Scanning loop
   useEffect(() => {
@@ -191,13 +205,6 @@ export function BarcodeScanner({
     };
   }, [active, isManualEntryMode, cameraError]);
 
-  const stopCamera = useCallback(() => {
-    const currentStream = streamRef.current;
-    if (currentStream) {
-      currentStream.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-  }, []);
 
   const handleToggleManualEntry = useCallback(() => {
     setIsManualEntryMode((previous) => !previous);

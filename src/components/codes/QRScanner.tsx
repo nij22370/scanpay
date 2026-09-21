@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { readBarcodes } from "zxing-wasm";
+import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader";
+
+prepareZXingModule({
+  overrides: {
+    locateFile: (path: string) => `/wasm/${path}`,
+  },
+});
 
 interface QRScannerProps {
   onScan: (data: string) => void;
