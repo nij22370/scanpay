@@ -9,7 +9,12 @@ import { Product } from "@/types";
 
 export function ProductManager() {
   const [search, setSearch] = useState("");
-  const { data: products, isLoading } = useProducts(search ? { search } : undefined);
+  const { data: allProducts, isLoading } = useProducts();
+  const products = search
+    ? allProducts?.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : allProducts;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const [editing, setEditing] = useState<Product | null>(null);
@@ -50,7 +55,9 @@ export function ProductManager() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-bold">{product.name}</h3>
-                <p className="text-sm text-muted-foreground">{product.description}</p>
+                {product.name_np && (
+                  <p className="text-sm text-muted-foreground">{product.name_np}</p>
+                )}
               </div>
               <button onClick={() => setEditing(product)} className="p-1 hover:bg-accent rounded">
                 <Edit2 className="w-4 h-4" />

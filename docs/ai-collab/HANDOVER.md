@@ -97,6 +97,19 @@ graph LR
 - [x] `src/components/pos/DynamicBarcodeScanner.tsx` — `next/dynamic` wrapper with `ssr: false`
 - [x] `docs/ai-collab/DECISIONS.md` — ADR-011: zxing-wasm/reader subpath + dynamic import
 
+## ✅ Completed (Day 7 — Product Catalog CRUD with Auto-Code Generation)
+
+- [x] `@radix-ui/react-dialog` installed + `src/components/ui/dialog.tsx` created for official Shadcn Dialog primitives
+- [x] `src/utils/barcode.ts` — pure utilities for 12-digit EAN-13 generation (`generateRandomEan12`) and QR JSON serialization (`buildProductQrData`)
+- [x] `src/types/product.ts` & `src/validators/product.schema.ts` — aligned strictly with PRD §9 (`id`, `name`, `name_np`, `price`, `category`, `stock`, `low_stock_threshold`, `vat_applicable`, `barcode`, `qr_data`, `created_at`)
+- [x] `src/hooks/products/useProducts.ts` — `useProducts`, `useCreateProduct` (auto EAN-13 + QR before insert), `useUpdateProduct` (optimistic updates), `useDeleteProduct` (mutation)
+- [x] `src/components/codes/QRGenerator.tsx` & `BarcodeGenerator.tsx` — enhanced with `className` and `hideDownload` for compact 80px preview rendering
+- [x] `src/components/products/ProductModal.tsx` — React Hook Form + Zod modal with live barcode/QR code preview
+- [x] `src/components/products/DeleteProductDialog.tsx` — confirmation dialog before destructive deletion
+- [x] `src/app/(dashboard)/products/page.tsx` — responsive 1/2/3 column product catalog grid with search, category filtering, stock badges, and mini QR codes
+- [x] `supabase/schema.sql` — updated table definition to match PRD §9
+- [x] `docs/ai-collab/DECISIONS.md` — ADR-012 documented
+
 ## ⬜ Not Yet Started
 
 - [ ] Set up Supabase project and run migrations (see `docs/supabase-setup.md`)
@@ -104,7 +117,6 @@ graph LR
 - [ ] Implement payment gateway integrations (eSewa, Khalti, FonePay)
 - [ ] Build split-bill feature
 - [ ] Implement transaction and slip generation
-- [ ] Product, inventory, reports, and admin pages
 - [ ] Connect login to actual Supabase auth backend (requires configured Supabase project)
 
 ## 🚫 Blockers

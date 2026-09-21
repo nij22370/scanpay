@@ -11,10 +11,9 @@ export function useLowStockProducts(threshold: number = 5) {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .lte("stock", threshold)
-        .eq("is_active", true);
+        .lte("stock", threshold);
       if (error) throw error;
-      return data;
+      return (data ?? []) as Product[];
     },
     refetchInterval: 30000,
   });

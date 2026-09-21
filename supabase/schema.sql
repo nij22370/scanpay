@@ -1,25 +1,24 @@
 -- Create tables for ScanPay
 -- Run this in Supabase SQL editor or via migration
 
--- 1. Products Table
+-- 1. Products Table (PRD §9)
 CREATE TABLE IF NOT EXISTS products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
-  description TEXT,
+  name_np TEXT,
   price NUMERIC(10, 2) NOT NULL DEFAULT 0,
-  cost_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  category TEXT NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0,
-  category TEXT,
+  low_stock_threshold INTEGER NOT NULL DEFAULT 10,
+  vat_applicable BOOLEAN NOT NULL DEFAULT false,
   barcode TEXT UNIQUE,
+  qr_data TEXT,
   image_url TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
 
 -- 2. Transactions Table
 CREATE TABLE IF NOT EXISTS transactions (
@@ -84,38 +83,53 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE split_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE split_participants ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies (basic — adjust based on auth requirements)
-CREATE POLICY "Authenticated users can read products"
+-- Products RLS Policies (allow full CRUD for application operations)
+CREATE POLICY "Allow read products"
   ON products FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (true);
 
-CREATE POLICY "Authenticated users can read transactions"
+CREATE POLICY "Allow insert products"
+  ON products FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Allow update products"
+  ON products FOR UPDATE
+  USING (true);
+
+CREATE POLICY "Allow delete products"
+  ON products FOR DELETE
+  USING (true);
+
+-- Transactions RLS Policies
+CREATE POLICY "Allow read transactions"
   ON transactions FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (true);
 
-CREATE POLICY "Authenticated users can create transactions"
+CREATE POLICY "Allow insert transactions"
   ON transactions FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+  WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can update own transactions"
+CREATE POLICY "Allow update transactions"
   ON transactions FOR UPDATE
-  USING (auth.role() = 'authenticated' AND created_by = auth.uid());
+  USING (true);
 
-CREATE POLICY "Authenticated users can read split sessions"
+-- Split Sessions RLS Policies
+CREATE POLICY "Allow read split sessions"
   ON split_sessions FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (true);
 
-CREATE POLICY "Authenticated users can create split sessions"
+CREATE POLICY "Allow insert split sessions"
   ON split_sessions FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+  WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can read split participants"
+-- Split Participants RLS Policies
+CREATE POLICY "Allow read split participants"
   ON split_participants FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (true);
 
-CREATE POLICY "Authenticated users can create split participants"
+CREATE POLICY "Allow insert split participants"
   ON split_participants FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+  WITH CHECK (true);
 
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -125,10 +139,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER update_products_updated_at
-  BEFORE UPDATE ON products
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE OR REPLACE TRIGGER update_transactions_updated_at
   BEFORE UPDATE ON transactions

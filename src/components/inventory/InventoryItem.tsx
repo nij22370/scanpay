@@ -38,7 +38,7 @@ export function InventoryItem({ product }: InventoryItemProps) {
       </div>
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Price: Rs. {product.price}</span>
-        <span>Cost: Rs. {product.cost_price}</span>
+        <span>Category: {product.category}</span>
       </div>
     </motion.div>
   );

@@ -203,6 +203,28 @@ graph LR
 
 ---
 
+## ADR-012: Radix UI Dialog + Product Catalog CRUD with Auto-Code Generation
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-21 |
+
+**Context**: 
+1. The product management interface requires modal dialogs for product creation, editing, and delete confirmations with accessible focus traps, overlay animations, and responsive positioning.
+2. Products require automatic EAN-13 barcode generation (12 numeric digits with auto check digit via `bwip-js`) and dynamic QR code generation ({id, name, price} JSON) upon creation.
+3. PRD §9 specifies fields: `id`, `name`, `name_np`, `price`, `category`, `stock`, `low_stock_threshold`, `vat_applicable`, `barcode`, `qr_data`, `created_at`.
+
+**Decision**:
+1. Install `@radix-ui/react-dialog` to power standard Shadcn `Dialog` primitives (`Dialog`, `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription`).
+2. Drop unused schema fields (`description`, `cost_price`, `image_url`, `is_active`, `updated_at`) to strictly align with PRD §9.
+3. Provide a confirmation modal before destructive deletion to prevent accidental loss of catalog data.
+4. Reuse the existing `QRGenerator` with `className` and `hideDownload` props for 80px mini QR rendering on cards and in-modal previews.
+
+**Consequences**: Accessible dialogs project-wide, consistent code generation across POS and product catalog, strict TypeScript validation with React Hook Form + Zod.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

@@ -40,7 +40,8 @@ export function POSScreen() {
 
   const barcodePayload = useMemo(() => {
     return `SCANPAY-${Date.now()}`;
-  }, [isCodeSectionVisible]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isPayButtonDisabled = useMemo(() => {
     return (
