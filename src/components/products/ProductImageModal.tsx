@@ -40,7 +40,7 @@ export function ProductImageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden">
+      <DialogContent className="max-w-xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Full Image Header Container */}
         <div className="relative w-full bg-slate-950 flex items-center justify-center min-h-[300px] h-[360px] md:h-[440px] p-2">
           {product.image_url ? (

@@ -213,7 +213,30 @@ Created all required folders with placeholder `index.ts` files:
 - Verified passing `npm run typecheck`, `npm run lint`, and `npm run build` across 15 routes.
 
 ---
-
+ 
+## Days 9–10 — Inventory Manager
+- Created `src/hooks/products/useInventory.ts` with `useInventory` (products sorted by stock ASC), `useUpdateStock` (optimistic single-product update), `useBulkUpdateStock` (array upsert), and `getStockStatus` helper.
+- Built inventory UI components:
+  - `InventoryAlertBanner` — top banner listing low/out-of-stock products with dismiss
+  - `InventoryTable` — desktop table: name, category, editable stock input, threshold, status badge (OK/LOW/OUT), quick +/- buttons
+  - `InventoryCard` — mobile card layout with same fields and quick adjust
+  - `BulkUpdateModal` — modal listing all products with editable stock, sorted by priority (OUT → LOW → OK), save all at once
+  - `CSVExportButton` — vanilla JS Blob download of name, name_np, barcode, price, stock, category
+  - `CSVImport` — file input (CSV only), PapaParse preview table with validation errors, Supabase upsert on barcode conflict
+- Updated `src/app/(dashboard)/inventory/page.tsx` with alert banner, responsive table/cards, bulk update, CSV import/export, skeletons, empty state (green checkmark when healthy), error with Retry button.
+- Added `papaparse` + `@types/papaparse` dependency.
+ 
+## Day 11 — Product Page Responsive QA
+- Added `ProductCardSkeleton` (matches product card dimensions) and `InventoryTableSkeleton` (5 rows).
+- Replaced inline skeletons in products page with `ProductCardSkeleton` (6 cards).
+- Fixed text overflow on 414px: added `truncate` to product name, name_np, barcode.
+- Inventory table already converts to card layout below `md` breakpoint (no horizontal scroll).
+- Added `max-h-[90vh] overflow-y-auto` to all dialogs (`ProductModal`, `DeleteProductDialog`, `ProductImageModal`) to prevent viewport overflow on iPhone SE (375px).
+- Products page error banner now includes Retry button calling `refetch()`.
+- Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass.
+ 
+---
+ 
 ## Standard Development Rules
 
 ### TypeScript

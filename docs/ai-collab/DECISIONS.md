@@ -225,6 +225,58 @@ graph LR
 
 ---
 
+---
+
+## ADR-013: Inventory Manager with Stock Alerts, Bulk Update, CSV Import/Export
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-22 |
+
+**Context**:
+Need a dedicated inventory management page separate from the product catalog. Requirements:
+1. Top alert banner when products are at/below `low_stock_threshold` — shows count and lists names
+2. Inventory table (desktop) / card list (mobile) with columns: Product name, Category, Current stock, Threshold, Status (OK/LOW/OUT), Quick adjust (+/- buttons + custom input)
+3. Quick adjust calls `useUpdateStock` mutation with optimistic update
+4. Bulk update modal listing all products with editable stock fields, save all at once
+5. CSV export of current inventory (name, name_np, barcode, price, stock, category) via vanilla JS Blob
+6. CSV import with file input, PapaParse preview table with validation, Supabase upsert on barcode conflict
+
+**Decision**:
+1. Created `src/hooks/products/useInventory.ts` with `useInventory` (query sorted by stock ASC), `useUpdateStock` (optimistic single update), `useBulkUpdateStock` (array upsert), and `getStockStatus` helper
+2. Built modular components: `InventoryAlertBanner`, `InventoryTable`, `InventoryCard`, `BulkUpdateModal`, `CSVExportButton`, `CSVImport`
+3. Used PapaParse for robust CSV parsing (handles quoted fields, commas, newlines)
+4. Inventory page uses responsive pattern: table on `md:`+, cards on mobile
+5. Empty state shows green checkmark when no low-stock items
+6. Loading skeletons: `InventoryTableSkeleton` (5 rows), `ProductCardSkeleton` (reused by products page)
+
+**Consequences**: Reusable inventory hooks and components; CSV import/export without heavy dependencies; optimistic updates for snappy UX; consistent with existing product catalog patterns.
+
+---
+
+## ADR-014: Product & Inventory Responsive QA Polish (Day 11)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-22 |
+
+**Context**:
+Polish pass over Days 7–10 work to ensure production-quality responsive behavior across breakpoints (375px iPhone SE, 414px, 768px iPad, 1280px desktop).
+
+**Decision**:
+1. **Loading skeletons**: Extracted `ProductCardSkeleton` (matches product card dimensions) and `InventoryTableSkeleton` (5 rows) — both use Shadcn `Skeleton` component
+2. **Text truncation**: Added `truncate` + `max-w-[150px]` to product name, name_np, barcode on cards and table cells to prevent overflow at 414px
+3. **Table → cards**: Inventory page already uses `hidden md:block` (table) / `md:hidden` (cards) — verified no horizontal scroll on tablet
+4. **Modal viewport overflow**: Added `max-h-[90vh] overflow-y-auto` to `DialogContent` in `ProductModal`, `DeleteProductDialog`, `ProductImageModal` — prevents overflow on iPhone SE (375px)
+5. **Empty states**: Products page already had illustration + "No products found" + CTA; Inventory page added green checkmark + "All stock levels are healthy" when no low-stock items
+6. **Error states**: Products & Inventory error banners now include Retry button calling `refetch()`
+
+**Consequences**: Consistent skeleton/empty/error patterns across product and inventory pages; all modals fit mobile viewport; no text overflow on narrow screens; table never causes horizontal scroll.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown
