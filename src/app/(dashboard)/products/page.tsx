@@ -9,6 +9,7 @@ import { ProductModal } from "@/components/products/ProductModal";
 import { DeleteProductDialog } from "@/components/products/DeleteProductDialog";
 import { ProductImageModal } from "@/components/products/ProductImageModal";
 import { QRGenerator } from "@/components/codes/QRGenerator";
+import { ProductCardSkeleton } from "@/components/inventory/ProductCardSkeleton";
 import { buildProductQrData } from "@/utils/barcode";
 import type { Product } from "@/types/product";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ const CARD_QR_SIZE_PX = 80;
 const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 
 export default function ProductsPage() {
-  const { data: products = [], isLoading, isError, error } = useProducts();
+  const { data: products = [], isLoading, isError, error, refetch } = useProducts();
 
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCategory, setSelectedCategory] =
@@ -196,16 +197,24 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Error Banner */}
+      {/* Error Banner with Retry */}
       {isError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-center gap-2">
           <span className="material-symbols-outlined text-lg text-red-600">
             error
           </span>
-          <span>
-            Failed to load products:{" "}
-            {error instanceof Error ? error.message : "Unknown error"}
-          </span>
+          <div className="flex-1">
+            <p className="font-medium">Failed to load products</p>
+            <p className="text-xs mt-1">
+              {error instanceof Error ? error.message : "Unknown error"}
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer flex-shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -213,23 +222,7 @@ export default function ProductsPage() {
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, idx) => (
-            <div
-              key={`skeleton-${idx}`}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4"
-            >
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-5 w-3/4 rounded-md" />
-                  <Skeleton className="h-4 w-1/2 rounded-md" />
-                </div>
-                <Skeleton className="h-[80px] w-[80px] rounded-lg" />
-              </div>
-              <Skeleton className="h-6 w-1/3 rounded-md" />
-              <div className="flex gap-2 pt-2">
-                <Skeleton className="h-10 flex-1 rounded-xl" />
-                <Skeleton className="h-10 flex-1 rounded-xl" />
-              </div>
-            </div>
+            <ProductCardSkeleton key={`skeleton-${idx}`} />
           ))}
         </div>
       )}
@@ -340,11 +333,11 @@ export default function ProductsPage() {
                     {/* Middle Section: Name (Left) + Mini QR (Right) */}
                     <div className="flex items-start justify-between gap-3 pt-1">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base text-slate-900 leading-snug break-words">
+                        <h3 className="font-semibold text-base text-slate-900 leading-snug truncate">
                           {product.name}
                         </h3>
                         {product.name_np && (
-                          <p className="text-xs text-slate-500 break-words mt-0.5 font-sans">
+                          <p className="text-xs text-slate-500 truncate mt-0.5 font-sans">
                             {product.name_np}
                           </p>
                         )}
@@ -397,7 +390,7 @@ export default function ProductsPage() {
                         <span className="material-symbols-outlined text-sm text-slate-400">
                           barcode
                         </span>
-                        <span>{product.barcode}</span>
+                        <span className="truncate max-w-[150px]">{product.barcode}</span>
                       </div>
                     )}
                   </div>

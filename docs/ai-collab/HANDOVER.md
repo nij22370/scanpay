@@ -12,13 +12,19 @@ graph LR
     DONE2 --> DONE3["✅ Day 3<br/>Foundation"]
     DONE3 --> DONE4["✅ Days 4-5<br/>Code Engine"]
     DONE4 --> DONE5["✅ Day 6<br/>Scanner"]
-    DONE5 --> TODO["⬜ Day 7+<br/>POS, Payments"]
+    DONE5 --> DONE7["✅ Days 7-8<br/>Products CRUD"]
+    DONE7 --> DONE9["✅ Days 9-10<br/>Inventory"]
+    DONE9 --> DONE11["✅ Day 11<br/>Responsive QA"]
+    DONE11 --> TODO["⬜ Next<br/>POS, Payments"]
 
     style DONE1 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE2 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE3 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE4 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE5 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE7 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE9 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE11 fill:#22c55e,stroke:#16a34a,color:#fff
     style TODO fill:#3b82f6,stroke:#2563eb,color:#fff
 ```
 
@@ -26,9 +32,9 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Days 1–6 complete — scaffold, auth, layout, foundation, code engine, camera scanner |
+| **Status** | ✅ Days 1–11 complete — scaffold, auth, layout, foundation, code engine, scanner, products CRUD, inventory manager, responsive QA |
 | **Last commit** | `1603529` on `main` (Days 1–3) |
-| **Pending** | Days 4–6 on `feat/code-engine-scanner` branch — user will verify and commit |
+| **Pending** | Days 4–11 on local branches — user will verify and commit |
 | **CI** | `tsc --noEmit` ✅ · `next lint` ✅ |
 
 ---
@@ -110,6 +116,28 @@ graph LR
 - [x] `supabase/schema.sql` — updated table definition to match PRD §9
 - [x] `docs/ai-collab/DECISIONS.md` — ADR-012 documented
 
+## ✅ Completed (Days 9–10 — Inventory Manager)
+
+- [x] `src/hooks/products/useInventory.ts` — `useInventory` (products sorted by stock ASC), `useUpdateStock` (optimistic single update), `useBulkUpdateStock` (array upsert), `getStockStatus` helper
+- [x] `src/components/inventory/InventoryAlertBanner.tsx` — top banner listing low/out-of-stock products with dismiss
+- [x] `src/components/inventory/InventoryTable.tsx` — desktop table with editable stock, threshold, status badge (OK/LOW/OUT), quick +/- buttons
+- [x] `src/components/inventory/InventoryCard.tsx` — mobile card layout with same fields and quick adjust
+- [x] `src/components/inventory/BulkUpdateModal.tsx` — modal listing all products with editable stock, sorted by priority (OUT → LOW → OK), save all at once
+- [x] `src/components/inventory/CSVExportButton.tsx` — vanilla JS Blob download (name, name_np, barcode, price, stock, category)
+- [x] `src/components/inventory/CSVImport.tsx` — file input + PapaParse preview table with validation errors, Supabase upsert on barcode conflict
+- [x] `src/components/inventory/InventoryTableSkeleton.tsx` / `ProductCardSkeleton.tsx` — loading skeletons
+- [x] `src/app/(dashboard)/inventory/page.tsx` — alert banner, responsive table/cards, bulk update, CSV import/export, skeletons, empty state, error with Retry
+- [x] Added `papaparse` + `@types/papaparse` dependency
+
+## ✅ Completed (Day 11 — Product Page Responsive QA)
+
+- [x] Replaced inline skeletons in products page with `ProductCardSkeleton` (6 cards)
+- [x] Added `truncate` to product name, name_np, barcode to prevent overflow on 414px
+- [x] Inventory table already converts to card layout below `md` breakpoint (no horizontal scroll)
+- [x] Added `max-h-[90vh] overflow-y-auto` to all dialogs (`ProductModal`, `DeleteProductDialog`, `ProductImageModal`) for iPhone SE (375px)
+- [x] Products page error banner includes Retry button calling `refetch()`
+- [x] Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass
+
 ## ⬜ Not Yet Started
 
 - [ ] Set up Supabase project and run migrations (see `docs/supabase-setup.md`)
@@ -127,9 +155,12 @@ graph LR
 
 1. Commit Days 4–5 files: `git add <files> && git commit -m "feat(codes): add QR and barcode generator with PNG download"`
 2. Commit Day 6 files: `git add <files> && git commit -m "feat(scanner): add camera barcode/QR scanner with zxing-wasm and manual fallback"`
-3. Configure Supabase project and create tables
-4. Build core POS interface with payment integration
-5. Test camera scanner on a mobile device with rear camera
+3. Commit Days 7–8 files: `git add <files> && git commit -m "feat(products): add product catalog CRUD with auto-code generation"`
+4. **Commit Days 9–10 files**: `git add <files> && git commit -m "feat(inventory): add inventory manager with stock alerts, bulk update, CSV import/export"`
+5. **Commit Day 11 files**: `git add <files> && git commit -m "fix(responsive): add skeletons, empty states, fix overflow on products and inventory"`
+6. Configure Supabase project and create tables
+7. Build core POS interface with payment integration
+8. Test camera scanner on a mobile device with rear camera
 
 ## ❓ Open Questions
 
