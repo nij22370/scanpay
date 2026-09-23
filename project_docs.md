@@ -237,6 +237,49 @@ Created all required folders with placeholder `index.ts` files:
  
 ---
  
+## Day 12 — POS Cart State & Product Search
+- Created `src/store/cartStore.ts` — Zustand store with persist middleware (localStorage key: `scanpay-cart`). State: `items: CartItem[]` where `CartItem = { product: Product, quantity }`, `cashierNote: string`. Actions: `addItem(product)` (increments qty if exists), `removeItem(productId)`, `updateQuantity(productId, qty)` (removes if ≤0), `clearCart()`, `setCashierNote(note)`. Derived: `getSubtotal()`, `getItemCount()`.
+- Created `src/hooks/useDebounce.ts` — generic `useDebounce<T>(value, delay)` hook.
+- Created `src/hooks/useToast.tsx` — toast context/provider with `addToast(message, type)` and `useToast()` hook (success/error/info, auto-dismiss 3s).
+- Created `src/components/pos/ProductSearch.tsx` — search input with Lucide Search icon, 300ms debounce, TanStack Query `useProductSearch` to Supabase (name ILIKE + barcode exact match), results dropdown (max 6): name, name_np, price, stock badge. Keyboard nav: ↑/↓ highlight, Enter select, Esc close. Click → calls `onProductSelect` → clears input.
+- Added `useProductSearch(query)` hook to `src/hooks/products/useProducts.ts` — queries Supabase with `.or('name.ilike.%query%,barcode.eq.query')` limited to 6.
+- Updated `src/components/pos/POSScreen.tsx` — responsive layout:
+  - Mobile (<1024px): sticky search bar → ProductSearch dropdown → ProductGrid (quick add) → sticky cart → payment → actions. Cart count badge in header.
+  - Desktop (≥1024px): Left 60% (search + ProductGrid), Right 40% sticky cart panel + payment + QR/barcode + actions.
+  - Toast on add: "Added: [product name]" (success).
+- Updated `src/components/pos/CartDisplay.tsx` for new `CartItem` shape (`item.product.id`, `item.product.name`, `item.product.price`).
+- Wrapped POS page with `ToastProvider` in `src/app/(dashboard)/pos/page.tsx`.
+- Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass.
+ 
+---
+
+## Day 13 — Split Bill Manager, Printable Receipt Slip & Analytics Reports UI
+- **Split Bill Route (`/split`)**: Created `src/app/(dashboard)/split/page.tsx` replacing placeholder `index.tsx`.
+- **Split Bill Manager (`src/components/split/SplitManager.tsx`)**:
+  - Cart total synchronization via `useCartStore` with manual bill amount override.
+  - Quick Split preset buttons (2, 3, 4, 5 equal ways) with automatic per-person calculation & remainder handling.
+  - Participant management: custom customer names, assigned amounts, payment method badges (Cash, eSewa, Khalti, FonePay), and payment status toggle.
+  - Real-time progress bar of collected balance vs remaining balance.
+  - Toast feedback and split session mutation handling.
+- **Transaction Receipt Slip (`/slip/[id]`)**: Created `src/app/slip/[id]/page.tsx` replacing placeholder `index.tsx`.
+- **Printable Slip UI (`src/components/slip/SlipDisplay.tsx`)**:
+  - Clean thermal POS receipt aesthetic with store branding, VAT number, transaction details, and Nepali BS date formatting via `NepaliDate`.
+  - Itemized table with quantities, prices, 13% VAT tax breakdown, and grand total in NPR.
+  - Verification barcode (Code 128) & QR code.
+  - One-click Browser Print (`window.print()`) with `@media print` rules for clean thermal paper output.
+  - Client-side PDF receipt generation & instant download via `jsPDF`.
+- **Financial Analytics Reports (`/reports`)**: Created `src/app/(dashboard)/reports/page.tsx` replacing placeholder `index.tsx`.
+- **Reports Dashboard (`src/components/reports/ReportsPage.tsx`)**:
+  - Date preset filtering (All, Today, Last 7 Days, This Month) and custom date range picker.
+  - Summary metrics: Total Revenue (NPR), Total Transactions, Average Ticket Value.
+  - Payment gateway revenue distribution progress bars (eSewa, Khalti, FonePay, Cash).
+  - Recent transaction history table with direct receipt links.
+  - CSV report export download via Blob.
+- **Global Toast Provider (`src/app/providers.tsx`)**: Wrapped root `Providers` with `ToastProvider` for universal app-wide toast notifications.
+- **Verification**: `npx tsc --noEmit` PASS (0 errors), `npm run lint` PASS (0 errors, 0 warnings), `npm run build` PASS (18 static/dynamic routes compiled).
+
+---
+ 
 ## Standard Development Rules
 
 ### TypeScript

@@ -15,7 +15,9 @@ graph LR
     DONE5 --> DONE7["✅ Days 7-8<br/>Products CRUD"]
     DONE7 --> DONE9["✅ Days 9-10<br/>Inventory"]
     DONE9 --> DONE11["✅ Day 11<br/>Responsive QA"]
-    DONE11 --> TODO["⬜ Next<br/>POS, Payments"]
+    DONE11 --> DONE12["✅ Day 12<br/>POS Cart + Search"]
+    DONE12 --> DONE13["✅ Day 13<br/>Split, Slip & Reports UI"]
+    DONE13 --> TODO["⬜ Next<br/>Backend Gateway Config"]
 
     style DONE1 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE2 fill:#22c55e,stroke:#16a34a,color:#fff
@@ -25,6 +27,8 @@ graph LR
     style DONE7 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE9 fill:#22c55e,stroke:#16a34a,color:#fff
     style DONE11 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE12 fill:#22c55e,stroke:#16a34a,color:#fff
+    style DONE13 fill:#22c55e,stroke:#16a34a,color:#fff
     style TODO fill:#3b82f6,stroke:#2563eb,color:#fff
 ```
 
@@ -32,10 +36,10 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Days 1–11 complete — scaffold, auth, layout, foundation, code engine, scanner, products CRUD, inventory manager, responsive QA |
-| **Last commit** | `1603529` on `main` (Days 1–3) |
-| **Pending** | Days 4–11 on local branches — user will verify and commit |
-| **CI** | `tsc --noEmit` ✅ · `next lint` ✅ |
+| **Status** | ✅ Days 1–13 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI |
+| **Last commit** | `1603529` on `main` |
+| **Pending** | Days 4–13 on local workspace |
+| **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
 
 ---
 
@@ -136,6 +140,18 @@ graph LR
 - [x] Inventory table already converts to card layout below `md` breakpoint (no horizontal scroll)
 - [x] Added `max-h-[90vh] overflow-y-auto` to all dialogs (`ProductModal`, `DeleteProductDialog`, `ProductImageModal`) for iPhone SE (375px)
 - [x] Products page error banner includes Retry button calling `refetch()`
+- [x] Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass
+
+## ✅ Completed (Day 12 — POS Cart State & Product Search)
+
+- [x] `src/store/cartStore.ts` — Zustand store with persist middleware (`scanpay-cart`), `CartItem = { product: Product, quantity }`, `cashierNote`, actions: `addItem`, `removeItem`, `updateQuantity`, `clearCart`, `setCashierNote`, derived: `getSubtotal`, `getItemCount`
+- [x] `src/hooks/useDebounce.ts` — generic `useDebounce<T>(value, delay)` hook
+- [x] `src/hooks/useToast.tsx` — toast context/provider, `addToast(message, type)`, `useToast()` hook (success/error/info, auto-dismiss 3s)
+- [x] `src/components/pos/ProductSearch.tsx` — search input with Lucide Search, 300ms debounce, `useProductSearch` to Supabase (name ILIKE + barcode exact), dropdown (max 6): name, name_np, price, stock badge, keyboard nav (↑/↓/Enter/Esc), click → `onProductSelect` → clear input
+- [x] `src/hooks/products/useProducts.ts` — added `useProductSearch(query)` hook
+- [x] `src/components/pos/POSScreen.tsx` — responsive layout: mobile (sticky search → dropdown → ProductGrid → sticky cart → payment → actions, cart badge in header), desktop (left 60% search+grid, right 40% sticky cart panel), toast on add "Added: [product name]"
+- [x] `src/components/pos/CartDisplay.tsx` — updated for new `CartItem` shape
+- [x] `src/app/(dashboard)/pos/page.tsx` — wrapped with `ToastProvider`
 - [x] Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass
 
 ## ⬜ Not Yet Started

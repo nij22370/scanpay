@@ -1,10 +1,10 @@
 export {
   useProducts,
-  useProduct,
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
-} from "./useProducts";
+  useProductSearch,
+} from "./products/useProducts";
 export {
   useInventory,
   useUpdateStock,
@@ -17,3 +17,5 @@ export { useTodayTransactions } from "./useTodayTransactions";
 export { useLowStockProducts } from "./useLowStock";
 export { useSlip } from "./useSlip";
 export { usePaymentMutation } from "./usePayment";
+export { useDebounce } from "./useDebounce";
+export { useToast, ToastProvider } from "./useToast";
