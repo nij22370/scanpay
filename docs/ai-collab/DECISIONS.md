@@ -277,6 +277,33 @@ Polish pass over Days 7–10 work to ensure production-quality responsive behavi
 
 ---
 
+## ADR-015: POS Cart State & Product Search (Day 12)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-23 |
+
+**Context**:
+Need a POS screen with cart state management and product search for fast checkout. Requirements:
+1. Cart state persisted across sessions (localStorage) with full Product objects, quantity, cashier note
+2. Product search by name (fuzzy/ILIKE) or barcode (exact) with debounced input and dropdown results
+3. Responsive POS layout: mobile-first with sticky search, desktop split view with always-visible cart panel
+4. Toast notifications for add-to-cart feedback
+
+**Decision**:
+1. **Cart Store**: `src/store/cartStore.ts` — Zustand with `persist` middleware (`scanpay-cart` key). `CartItem = { product: Product, quantity }` stores full Product for price/name access without re-fetching. Actions: `addItem(product)` (increments qty if exists), `removeItem(id)`, `updateQuantity(id, qty)` (removes if ≤0), `clearCart()`, `setCashierNote(note)`. Derived selectors: `getSubtotal()`, `getItemCount()`.
+2. **Search Hook**: `useProductSearch(query)` in `useProducts.ts` — TanStack Query with Supabase `.or('name.ilike.%query%,barcode.eq.query')` limited to 6 results. Key: `['products', 'search', query]`.
+3. **Debounce Hook**: `useDebounce<T>(value, delay)` — generic, reusable for any debounced input.
+4. **Toast System**: `useToast.tsx` — Context + Provider, `addToast(message, type)`, auto-dismiss 3s, Framer Motion animations, accessible dismiss button.
+5. **ProductSearch Component**: Controlled input with Search icon, 300ms debounce, dropdown with keyboard navigation (↑/↓/Enter/Esc), results show name, name_np, price, stock badge (color-coded). Click/Enter → `onProductSelect(product)` → clear input.
+6. **Responsive POS Layout**: Mobile (<1024px) — sticky search → dropdown → ProductGrid (quick add 12 products) → sticky cart → payment → actions. Cart badge in header. Desktop (≥1024px) — CSS Grid 60/40 split: left (sticky search + ProductGrid), right (sticky cart + payment + QR/barcode + actions).
+7. **CartDisplay Update**: Uses `item.product.id`, `item.product.name`, `item.product.price` from new `CartItem` shape.
+
+**Consequences**: Fast checkout UX with persistent cart, debounced search with keyboard accessibility, responsive layout works on all breakpoints, toast feedback for actions. Cart state survives page refresh. Search reuses existing Supabase query patterns. No new dependencies.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

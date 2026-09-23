@@ -144,3 +144,24 @@ export function useDeleteProduct() {
     },
   });
 }
+
+export function useProductSearch(query: string) {
+  return useQuery<Product[]>({
+    queryKey: [...QUERY_KEY_PRODUCTS, "search", query],
+    queryFn: async () => {
+      if (!query.trim()) return [];
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .or(`name.ilike.%${query}%,barcode.eq.${query}`)
+        .limit(6);
+
+      if (error) {
+        throw new Error(error.message || "Failed to search products");
+      }
+      return (data ?? []) as Product[];
+    },
+    enabled: query.trim().length > 0,
+  });
+}

@@ -1,15 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store";
 import { usePOSStore } from "@/store";
 import { CartDisplay } from "./CartDisplay";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
+import { ProductSearch } from "./ProductSearch";
 import { QRDisplay } from "@/components/codes/QRDisplay";
 import { BarcodeDisplay } from "@/components/codes/BarcodeDisplay";
 import { usePaymentMutation } from "@/hooks/usePayment";
 import { useCreateTransaction } from "@/hooks";
+import { useToast } from "@/hooks/useToast";
+import { useProducts } from "@/hooks/products/useProducts";
+import type { Product } from "@/types/product";
+import { ShoppingBag, Plus, Search } from "lucide-react";
 
 const CODE_SECTION_ANIMATION = {
   initial: { opacity: 0, height: 0 },
@@ -21,12 +26,15 @@ const QR_CODE_SIZE_PX = 200;
 
 export function POSScreen() {
   const items = useCartStore((s) => s.items);
-  const totalAmount = useCartStore((s) => s.totalAmount);
+  const addItem = useCartStore((s) => s.addItem);
+  const getItemCount = useCartStore((s) => s.getItemCount);
+  const getSubtotal = useCartStore((s) => s.getSubtotal);
   const selectedPaymentMethod = usePOSStore((s) => s.selectedPaymentMethod);
   const setPaymentMethod = usePOSStore((s) => s.setPaymentMethod);
   const isPaymentProcessing = usePOSStore((s) => s.isPaymentProcessing);
   const clearCart = useCartStore((s) => s.clearCart);
   const setLastTransactionId = usePOSStore((s) => s.setLastTransactionId);
+  const { addToast } = useToast();
 
   const [isCodeSectionVisible, setIsCodeSectionVisible] = useState(false);
   const createTransaction = useCreateTransaction();
@@ -35,8 +43,8 @@ export function POSScreen() {
   );
 
   const qrPayload = useMemo(() => {
-    return `scanpay:${selectedPaymentMethod}:${totalAmount()}`;
-  }, [selectedPaymentMethod, totalAmount]);
+    return `scanpay:${selectedPaymentMethod}:${getSubtotal()}`;
+  }, [selectedPaymentMethod, getSubtotal]);
 
   const barcodePayload = useMemo(() => {
     return `SCANPAY-${Date.now()}`;
@@ -48,9 +56,9 @@ export function POSScreen() {
       isPaymentProcessing ||
       items.length === 0 ||
       !selectedPaymentMethod ||
-      totalAmount() === 0
+      getSubtotal() === 0
     );
-  }, [isPaymentProcessing, items.length, selectedPaymentMethod, totalAmount]);
+  }, [isPaymentProcessing, items.length, selectedPaymentMethod, getSubtotal]);
 
   const handleToggleCodeSection = useCallback(() => {
     setIsCodeSectionVisible((previousState) => !previousState);
@@ -59,106 +67,289 @@ export function POSScreen() {
   const handlePayment = useCallback(async () => {
     if (!selectedPaymentMethod) return;
     const result = await paymentMutation.mutateAsync({
-      amount: totalAmount(),
+      amount: getSubtotal(),
       transactionId: crypto.randomUUID(),
     });
     if (result.transactionId) {
       setLastTransactionId(result.transactionId);
       clearCart();
     }
-  }, [selectedPaymentMethod, paymentMutation, totalAmount, setLastTransactionId, clearCart]);
+  }, [selectedPaymentMethod, paymentMutation, getSubtotal, setLastTransactionId, clearCart]);
+
+  const handleProductSelect = useCallback(
+    (product: Product) => {
+      if (product.stock <= 0) {
+        addToast(`${product.name} is out of stock`, "error");
+        return;
+      }
+      addItem(product);
+      addToast(`Added: ${product.name}`, "success");
+    },
+    [addItem, addToast]
+  );
+
+  // Mobile: check if we're on mobile for layout purposes
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   return (
-    <div className="flex flex-col h-full max-w-lg mx-auto space-y-5">
+    <div className="flex flex-col h-full">
+      {/* Toast Provider will be at app level */}
+      
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
         <div>
           <h1 className="text-xl font-bold text-slate-900">POS Terminal</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Scan items or select payment method
           </p>
         </div>
-        <span className="material-symbols-outlined text-2xl text-primary">
-          point_of_sale
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Mobile cart indicator */}
+          {isMobile && items.length > 0 && (
+            <motion.span
+              layout
+              className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>{getItemCount()}</span>
+            </motion.span>
+          )}
+        </div>
       </div>
 
-      {/* Cart Section */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-[0_2px_4px_-1px_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
-        <CartDisplay />
-      </div>
+      <div className="flex-1 overflow-auto p-4 space-y-4">
+        {isMobile ? (
+          // Mobile Layout: Search at top, results dropdown, cart at bottom
+          <div className="space-y-4">
+            {/* Product Search */}
+            <div className="sticky top-16 z-10 bg-white/95 backdrop-blur-sm pb-4 border-b border-slate-100">
+              <ProductSearch onProductSelect={handleProductSelect} />
+            </div>
 
-      {/* Payment Methods */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-[0_2px_4px_-1px_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-3">
-          Payment Method
-        </p>
-        <PaymentMethodSelector
-          selected={selectedPaymentMethod}
-          onSelect={setPaymentMethod}
-        />
-      </div>
+            {/* Quick Add Product Grid (for mobile) */}
+            <ProductGrid onProductSelect={handleProductSelect} />
 
-      {/* QR / Barcode Section */}
-      <AnimatePresence>
-        {isCodeSectionVisible && selectedPaymentMethod && (
-          <motion.div
-            {...CODE_SECTION_ANIMATION}
-            className="overflow-hidden"
-          >
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-[0_2px_4px_-1px_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-4 text-center">
-                Scan to Pay
+            {/* Cart Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm sticky bottom-0">
+              <CartDisplay />
+            </div>
+
+            {/* Payment Methods */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-3">
+                Payment Method
               </p>
-              <div className="flex flex-col items-center gap-5">
-                <div className="p-3 bg-white rounded-xl border border-slate-100">
-                  <QRDisplay value={qrPayload} size={QR_CODE_SIZE_PX} />
-                </div>
-                <div className="w-full flex items-center gap-3">
-                  <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                    or scan barcode
+              <PaymentMethodSelector
+                selected={selectedPaymentMethod}
+                onSelect={setPaymentMethod}
+              />
+            </div>
+
+            {/* QR / Barcode Section */}
+            <AnimatePresence>
+              {isCodeSectionVisible && selectedPaymentMethod && (
+                <motion.div
+                  {...CODE_SECTION_ANIMATION}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-4 text-center">
+                      Scan to Pay
+                    </p>
+                    <div className="flex flex-col items-center gap-5">
+                      <div className="p-3 bg-white rounded-xl border border-slate-100">
+                        <QRDisplay value={qrPayload} size={QR_CODE_SIZE_PX} />
+                      </div>
+                      <div className="w-full flex items-center gap-3">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                          or scan barcode
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200" />
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl w-full flex justify-center">
+                        <BarcodeDisplay data={barcodePayload} type="code128" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2.5 pb-4">
+              <button
+                onClick={handleToggleCodeSection}
+                disabled={!selectedPaymentMethod}
+                className="w-full h-[52px] rounded-xl border border-primary text-primary font-semibold text-sm hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {isCodeSectionVisible ? "visibility_off" : "qr_code_2"}
+                </span>
+                {isCodeSectionVisible ? "Hide QR / Barcodes" : "Show QR / Barcodes"}
+              </button>
+
+              <button
+                onClick={handlePayment}
+                disabled={isPayButtonDisabled}
+                className="w-full h-[52px] bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl font-semibold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isPaymentProcessing && (
+                  <span className="material-symbols-outlined text-lg animate-spin">
+                    progress_activity
                   </span>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl w-full flex justify-center">
-                  <BarcodeDisplay data={barcodePayload} type="code128" />
-                </div>
+                )}
+                <span className="material-symbols-outlined text-lg">
+                  shopping_cart_checkout
+                </span>
+                Charge Rs. {getSubtotal().toFixed(2)} →
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Desktop Layout: Left 60% = search + product grid, Right 40% = cart panel
+          <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6 h-full">
+            {/* Left Panel: Search + Product Grid */}
+            <div className="flex flex-col h-full space-y-4">
+              <div className="sticky top-0 bg-white/95 backdrop-blur-sm pb-4 border-b border-slate-100">
+                <ProductSearch onProductSelect={handleProductSelect} />
+              </div>
+              <ProductGrid onProductSelect={handleProductSelect} />
+            </div>
+
+            {/* Right Panel: Cart + Payment (always visible) */}
+            <div className="flex flex-col h-full space-y-4">
+              {/* Cart Section */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm sticky top-0">
+                <CartDisplay />
+              </div>
+
+              {/* Payment Methods */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm sticky top-64">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-3">
+                  Payment Method
+                </p>
+                <PaymentMethodSelector
+                  selected={selectedPaymentMethod}
+                  onSelect={setPaymentMethod}
+                />
+              </div>
+
+              {/* QR / Barcode Section */}
+              <AnimatePresence>
+                {isCodeSectionVisible && selectedPaymentMethod && (
+                  <motion.div
+                    {...CODE_SECTION_ANIMATION}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sticky top-64">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-4 text-center">
+                        Scan to Pay
+                      </p>
+                      <div className="flex flex-col items-center gap-5">
+                        <div className="p-3 bg-white rounded-xl border border-slate-100">
+                          <QRDisplay value={qrPayload} size={QR_CODE_SIZE_PX} />
+                        </div>
+                        <div className="w-full flex items-center gap-3">
+                          <div className="flex-1 h-px bg-slate-200" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                            or scan barcode
+                          </span>
+                          <div className="flex-1 h-px bg-slate-200" />
+                        </div>
+                        <div className="p-3 bg-slate-50 rounded-xl w-full flex justify-center">
+                          <BarcodeDisplay data={barcodePayload} type="code128" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2.5 sticky bottom-0 bg-white/95 backdrop-blur-sm pt-4 border-t border-slate-100">
+                <button
+                  onClick={handleToggleCodeSection}
+                  disabled={!selectedPaymentMethod}
+                  className="w-full h-[52px] rounded-xl border border-primary text-primary font-semibold text-sm hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {isCodeSectionVisible ? "visibility_off" : "qr_code_2"}
+                  </span>
+                  {isCodeSectionVisible ? "Hide QR / Barcodes" : "Show QR / Barcodes"}
+                </button>
+
+                <button
+                  onClick={handlePayment}
+                  disabled={isPayButtonDisabled}
+                  className="w-full h-[52px] bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl font-semibold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isPaymentProcessing && (
+                    <span className="material-symbols-outlined text-lg animate-spin">
+                      progress_activity
+                    </span>
+                  )}
+                  <span className="material-symbols-outlined text-lg">
+                    shopping_cart_checkout
+                  </span>
+                  Charge Rs. {getSubtotal().toFixed(2)} →
+                </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-2.5 pb-4">
-        <button
-          onClick={handleToggleCodeSection}
-          disabled={!selectedPaymentMethod}
-          className="w-full h-[52px] rounded-xl border border-primary text-primary font-semibold text-sm hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
-        >
-          <span className="material-symbols-outlined text-lg">
-            {isCodeSectionVisible ? "visibility_off" : "qr_code_2"}
-          </span>
-          {isCodeSectionVisible ? "Hide QR / Barcodes" : "Show QR / Barcodes"}
-        </button>
-
-        <button
-          onClick={handlePayment}
-          disabled={isPayButtonDisabled}
-          className="w-full h-[52px] bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl font-semibold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center justify-center gap-2"
-        >
-          {isPaymentProcessing && (
-            <span className="material-symbols-outlined text-lg animate-spin">
-              progress_activity
-            </span>
-          )}
-          <span className="material-symbols-outlined text-lg">
-            shopping_cart_checkout
-          </span>
-          Charge Rs. {totalAmount()} →
-        </button>
       </div>
+    </div>
+  );
+}
+
+// Simple product grid for quick adding on mobile/desktop
+function ProductGrid({ onProductSelect }: { onProductSelect: (product: Product) => void }) {
+  const { data: products = [] } = useProducts();
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {products.slice(0, 12).map((product) => (
+        <button
+          key={product.id}
+          onClick={() => onProductSelect(product)}
+          disabled={product.stock <= 0}
+          className={`
+            p-3 border rounded-lg text-left transition-all cursor-pointer
+            ${product.stock <= 0 
+              ? "bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed" 
+              : "bg-white border-slate-200 hover:border-primary hover:shadow-md"
+            }
+          `}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm truncate">{product.name}</h3>
+              <p className="text-xs text-slate-500 truncate mt-0.5">Rs. {product.price.toFixed(2)}</p>
+            </div>
+            <Plus className="w-5 h-5 text-primary flex-shrink-0" />
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.stock <= 0 ? "bg-red-100 text-red-700" : product.stock <= (product.low_stock_threshold ?? 10) ? "bg-yellow-100 text-yellow-700" : "bg-emerald-100 text-emerald-700"}`}
+            >
+              {product.stock <= 0 ? "Out" : product.stock <= (product.low_stock_threshold ?? 10) ? "Low" : "In Stock"}
+            </span>
+          </div>
+        </button>
+      ))}
+      {products.length === 0 && (
+        <div className="col-span-full text-center py-8 text-muted-foreground">
+          <Search className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+          <p>No products available</p>
+        </div>
+      )}
     </div>
   );
 }
