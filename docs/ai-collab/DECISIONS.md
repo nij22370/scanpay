@@ -304,6 +304,51 @@ Need a POS screen with cart state management and product search for fast checkou
 
 ---
 
+## ADR-016: Cart UI + Scanner Integration (Days 14–15)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-24 |
+
+**Context**:
+Need a complete cart UI for the POS screen with mobile-friendly bottom sheet, desktop panel, shared VAT calculation logic, and integration with the existing barcode scanner (Day 6).
+
+**Decision**:
+1. **Cart Totals Hook**: `src/hooks/pos/useCartTotals.ts` — `useCartTotals(discount)` calculates subtotal (from cart store), discount (Rs, min 0), VAT (13% — **only if any cart item has `vat_applicable=true`**), total. Returns formatted strings for all 4 rows. This keeps VAT logic DRY and reusable across CartSheet, CartPanel, BillPreview, PaymentModal.
+2. **Mobile Cart Sheet**: `CartSheet.tsx` — Framer Motion bottom sheet with drag gesture. Collapsed state shows handle bar (80px height) with item count; drag up expands to 80vh. Uses `useMotionValue` + `useSpring` for smooth animation. `drag="y"` with constraints `{top: 0, bottom: viewportHeight - 80}`. Inside: item list with qty steppers, discount input, VAT toggle, totals breakdown, Pay button. Escape closes, body scroll locked. Hidden on `lg:`+ (desktop uses CartPanel).
+3. **Desktop Cart Panel**: `CartPanel.tsx` — static right panel (lg: visible), same content as CartSheet but no animation. Header with "Clear" button.
+4. **Scanner Integration**: Camera icon in POS header opens `DynamicBarcodeScanner` modal (SSR: false, reuses Day 6 `BarcodeScanner`). On scan: Supabase lookup by barcode exact match → `addItem` → toast → close scanner. Not found → "Product not found" toast. Out of stock → "[name] is out of stock" toast.
+5. **POS Page Updates**: F2 key opens Payment Modal (Days 16–17). Pre-payment validation: empty cart check + stock ≤ 0 warning. `useAuthStore` exported for cashier name. `ProductSearch` now accepts `className` for layout flexibility.
+
+**Consequences**: Unified cart experience across breakpoints; VAT logic centralized and correct (only on taxable items); scanner reuses existing Day 6 component via dynamic import; keyboard accessible (F2, Escape); pre-payment validation prevents invalid orders. All TypeScript strict, no `any`.
+
+---
+
+## ADR-017: Bill Preview + Payment Modal Frame (Days 16–17)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-24 |
+
+**Context**:
+Need bill preview overlay and payment modal frame with tabs for three payment methods (Cash, Digital QR, Split), keyboard shortcuts, and pre-payment validation.
+
+**Decision**:
+1. **Bill Preview**: `BillPreview.tsx` — full-screen overlay on mobile, centered modal on desktop (`max-w-2xl`, `max-h-[90vh]`, `overflow-y-auto`). Header: store name (placeholder "ScanPay POS"), A.D. datetime (`toLocaleString('en-NP')`), B.S. date (`convertToBS()`), cashier name (from `authStore`), invoice ID. Items table: Name | Qty | Unit Price | Total (shows Nepali name if `name_np` present). Totals rows: Subtotal / Discount (if >0) / VAT 13% (or "Exempt") / TOTAL (emerald highlight). Three payment buttons: Cash | Digital QR | Split (placeholders). Print button → `window.print()`. Close button (X). Framer Motion animate-in/out (scale 0.95→1, opacity).
+2. **Payment Modal**: `PaymentModal.tsx` — Shadcn `Dialog` with responsive sizing: fullscreen mobile (`w-full h-full max-w-full rounded-none`), centered desktop (`sm:max-w-2xl`). Header: "Payment — Rs [total]" with X close (Shadcn `DialogClose` handles Escape). Discount input (Rs, min 0) — live updates totals below. Totals summary: Subtotal / Discount / VAT / TOTAL (recalculates on discount change using same VAT logic: only if `vatApplicable`). Shadcn `Tabs` with three tabs:
+   - **Cash**: Quick amount buttons (100/500/1000/2000/5000/Exact), "Complete Cash Payment" button (placeholder)
+   - **Digital QR**: QR placeholder area, "Generate QR & Wait for Payment" button (placeholder)
+   - **Split**: Two amount inputs, "Process Split Payment" button (placeholder)
+   "Preview Bill" button → opens `BillPreview`. All tab content marked "to be implemented in Phase 5/6/7".
+3. **Keyboard Shortcuts**: F2 → opens Payment Modal (keydown listener in `POSScreen.tsx`). Escape → closes Payment Modal (handled by Shadcn `DialogClose` / overlay click).
+4. **Pre-Payment Validation**: In `handleOpenPaymentModal` — checks `items.length === 0` → "Add items to cart first" toast; checks any `item.product.stock <= 0` → "Stock warning: [names] is/are out of stock" toast.
+
+**Consequences**: Bill preview shows all required details (BS date, cashier, VAT breakdown); payment modal frame ready for Phase 5–7 implementation; keyboard shortcuts follow POS conventions; validation prevents invalid payment attempts. Reuses `useCartTotals` logic for consistency. No new dependencies.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown
