@@ -36,7 +36,7 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Days 1–13 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI |
+| **Status** | ✅ Days 1–17 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI, **POS Cart UI + Scanner + Bill Preview + Payment Modal** |
 | **Last commit** | `1603529` on `main` |
 | **Pending** | Days 4–13 on local workspace |
 | **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
@@ -153,6 +153,90 @@ graph LR
 - [x] `src/components/pos/CartDisplay.tsx` — updated for new `CartItem` shape
 - [x] `src/app/(dashboard)/pos/page.tsx` — wrapped with `ToastProvider`
 - [x] Verified `npm run typecheck`, `npm run lint`, `npm run build` all pass
+
+---
+
+## ✅ Completed (Day 13 — Split Bill Manager, Printable Receipt Slip & Analytics Reports UI)
+
+- [x] **Split Bill Route (`/split`)**: Created `src/app/(dashboard)/split/page.tsx` replacing placeholder `index.tsx`
+- [x] **Split Bill Manager (`src/components/split/SplitManager.tsx`)**:
+  - Cart total synchronization via `useCartStore` with manual bill amount override
+  - Quick Split preset buttons (2, 3, 4, 5 equal ways) with automatic per-person calculation & remainder handling
+  - Participant management: custom customer names, assigned amounts, payment method badges (Cash, eSewa, Khalti, FonePay), and payment status toggle
+  - Real-time progress bar of collected balance vs remaining balance
+  - Toast feedback and split session mutation handling
+- [x] **Transaction Receipt Slip (`/slip/[id]`)**: Created `src/app/slip/[id]/page.tsx` replacing placeholder `index.tsx`
+- [x] **Printable Slip UI (`src/components/slip/SlipDisplay.tsx`)**:
+  - Clean thermal POS receipt aesthetic with store branding, VAT number, transaction details, and Nepali BS date formatting via `NepaliDate`
+  - Itemized table with quantities, prices, 13% VAT tax breakdown, and grand total in NPR
+  - Verification barcode (Code 128) & QR code
+  - One-click Browser Print (`window.print()`) with `@media print` rules for clean thermal paper output
+  - Client-side PDF receipt generation & instant download via `jsPDF`
+- [x] **Financial Analytics Reports (`/reports`)**: Created `src/app/(dashboard)/reports/page.tsx` replacing placeholder `index.tsx`
+- [x] **Reports Dashboard (`src/components/reports/ReportsPage.tsx`)**:
+  - Date preset filtering (All, Today, Last 7 Days, This Month) and custom date range picker
+  - Summary metrics: Total Revenue (NPR), Total Transactions, Average Ticket Value
+  - Payment gateway revenue distribution progress bars (eSewa, Khalti, FonePay, Cash)
+  - Recent transaction history table with direct receipt links
+  - CSV report export download via Blob
+- [x] **Global Toast Provider (`src/app/providers.tsx`)**: Wrapped root `Providers` with `ToastProvider` for universal app-wide toast notifications
+- [x] **Verification**: `npx tsc --noEmit` PASS (0 errors), `npm run lint` PASS (0 errors, 0 warnings), `npm run build` PASS (18 static/dynamic routes compiled)
+
+---
+
+## ✅ Completed (Days 14–15 — Cart UI + Scanner Integration)
+
+- [x] **Cart Totals Hook** (`src/hooks/pos/useCartTotals.ts`):
+  - Shared `useCartTotals(discount)` hook calculating subtotal, discount (Rs, min 0), VAT (13% — only if any item has `vat_applicable=true`), total
+  - Returns formatted currency strings for all 4 rows (NPR via `Intl.NumberFormat('en-NP')`)
+- [x] **Mobile Cart Sheet** (`src/components/pos/CartSheet.tsx`):
+  - Framer Motion bottom sheet: collapsed handle bar (32×4px pill) at `y: calc(100% - 80px)` showing "X items", drag up to 80vh, drag down to collapse
+  - Touch + mouse drag support via `drag="y"` with constraints
+  - Inside expanded: item list (name truncate, qty stepper −/count/+, line total, trash), discount input, VAT toggle, totals breakdown (4 rows), Pay button, Clear cart
+  - Escape closes sheet, body scroll locked when open
+  - Hidden on desktop (`lg:hidden`)
+- [x] **Desktop Cart Panel** (`src/components/pos/CartPanel.tsx`):
+  - Fixed right panel (lg: visible), always visible alongside product search
+  - Header: "Current Order" + "Clear" button
+  - Same content as CartSheet, no animation
+- [x] **Scanner Integration on POS Page** (`src/components/pos/POSScreen.tsx`):
+  - Camera icon button in header opens `DynamicBarcodeScanner` modal (SSR: false, reuses Day 6 `BarcodeScanner`)
+  - On scan: Supabase lookup by `barcode` (exact match), adds to cart, closes scanner, success toast
+  - If not found: error toast "Product not found"
+  - If out of stock: error toast "[name] is out of stock"
+- [x] **POS Page Updates** (`src/components/pos/POSScreen.tsx`):
+  - Added `handleScannerResult` callback using `supabase.from('products').select('*').eq('barcode', barcode).single()`
+  - Added F2 keydown listener → opens Payment Modal (Days 16–17)
+  - Pre-payment validation in `handleOpenPaymentModal`: empty cart toast, out-of-stock warning toast
+  - `useAuthStore` exported from `src/store/index.ts` for cashier name
+  - `ProductSearch` accepts optional `className` prop
+
+---
+
+## ✅ Completed (Days 16–17 — Bill Preview + Payment Modal Frame)
+
+- [x] **Bill Preview** (`src/components/pos/BillPreview.tsx`):
+  - Full-screen overlay (mobile) / centered modal (desktop, `max-w-2xl`, `max-h-[90vh]`)
+  - Header: store name (placeholder), A.D. datetime, B.S. date (`convertToBS()`), cashier name, invoice ID
+  - Items table: Name | Qty | Unit Price | Total (Nepali name if present)
+  - Totals: Subtotal / Discount (if >0) / VAT 13% (or "Exempt") / TOTAL (emerald highlight)
+  - Three payment buttons at bottom: Cash | Digital QR | Split (placeholders)
+  - Print button → `window.print()`, Close button (X)
+  - Framer Motion animate-in/out
+- [x] **Payment Modal** (`src/components/pos/PaymentModal.tsx`):
+  - Shadcn `Dialog` — fullscreen mobile, centered desktop
+  - Header: "Payment — Rs [total]" with X close (Escape handled by Dialog)
+  - Discount input (live updates totals), totals summary (Subtotal/Discount/VAT/TOTAL)
+  - Shadcn `Tabs` with 3 tabs: Cash (quick amount buttons + Complete), Digital QR (placeholder + Generate), Split (2 amount inputs + Process)
+  - "Preview Bill" button → opens `BillPreview`
+  - All tabs marked "to be implemented in Phase 5/6/7"
+- [x] **Keyboard Shortcuts**:
+  - F2 → opens Payment Modal (via `handleOpenPaymentModal` in `POSScreen.tsx`)
+  - Escape → closes Payment Modal (Shadcn `DialogClose` / overlay click)
+- [x] **Pre-Payment Validation**: Empty cart check + stock check before opening payment modal
+- [x] **Verification**: `npm run typecheck` PASS, `npm run lint` PASS (4 framer-motion warnings expected), `npm run build` PASS (18 routes)
+
+---
 
 ## ⬜ Not Yet Started
 

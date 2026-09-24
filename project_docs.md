@@ -279,7 +279,95 @@ Created all required folders with placeholder `index.ts` files:
 - **Verification**: `npx tsc --noEmit` PASS (0 errors), `npm run lint` PASS (0 errors, 0 warnings), `npm run build` PASS (18 static/dynamic routes compiled).
 
 ---
- 
+
+## Days 14–15 — Cart UI + Scanner Integration
+
+### 14.1 Cart Totals Hook
+- `src/hooks/pos/useCartTotals.ts` — shared `useCartTotals(discount)` hook calculating:
+  - Subtotal from cart store `getSubtotal()`
+  - Discount (Rs, min 0, number input)
+  - VAT (13%) — **only applied if any item has `vat_applicable = true`**
+  - Total = subtotal - discount + vat
+  - Returns formatted currency strings for all 4 rows (NPR via `Intl.NumberFormat('en-NP')`)
+
+### 14.2 Mobile Cart Sheet (`CartSheet.tsx`)
+- Framer Motion bottom sheet:
+  - Collapsed: handle bar (32×4px pill) at `y: calc(100% - 80px)` showing "X items" summary
+  - Drag up → expands to 80% viewport height (`max-h-[80vh]`)
+  - Drag down → collapses back to handle
+  - Touch + mouse drag support via `drag="y"` with constraints
+  - Inside expanded state: item list (name truncate, qty stepper −/count/+, line total, trash), discount input, VAT toggle (shows whether applicable), totals breakdown (4 rows), Pay button, Clear cart button
+  - Keyboard: Escape closes sheet
+  - Body scroll locked when open
+- Hidden on desktop (`lg:hidden`) — desktop uses `CartPanel` instead
+
+### 14.3 Desktop Cart Panel (`CartPanel.tsx`)
+- Fixed right panel (lg: visible), always visible alongside product search
+- Header: "Current Order" + "Clear" button
+- Same content as CartSheet: item list, discount, VAT toggle, totals, Pay, Clear
+- No animation needed — static panel
+
+### 14.4 Scanner Integration on POS Page
+- Camera icon button in header (mobile + desktop) opens `DynamicBarcodeScanner` modal (SSR: false, reuses Day 6 `BarcodeScanner`)
+- On scan: Supabase lookup by `barcode` (exact match), adds to cart, closes scanner, shows success toast
+- If barcode not found: error toast "Product not found"
+- If product out of stock: error toast "[name] is out of stock"
+
+### 14.5 POS Page Updates (`POSScreen.tsx`)
+- Added `handleScannerResult` callback using `supabase.from('products').select('*').eq('barcode', barcode).single()`
+- Added F2 keydown listener → opens Payment Modal (Days 16–17)
+- Added pre-payment validation in `handleOpenPaymentModal`:
+  - Empty cart → "Add items to cart first" toast
+  - Any item stock ≤ 0 → "Stock warning: [names] is/are out of stock" toast
+- `useAuthStore` now exported from `src/store/index.ts` for cashier name access
+- `ProductSearch` accepts optional `className` prop for desktop layout flexibility
+
+### 14.6 Verification
+- `npm run typecheck` — PASS (0 errors)
+- `npm run lint` — PASS (4 framer-motion motion-value warnings, expected)
+- `npm run build` — PASS (18 routes)
+
+---
+
+## Days 16–17 — Bill Preview + Payment Modal Frame
+
+### 16.1 Bill Preview (`BillPreview.tsx`)
+- Full-screen overlay on mobile, centered modal on desktop (`max-w-2xl`, `max-h-[90vh]`, `overflow-y-auto`)
+- Header: store name (placeholder "ScanPay POS"), A.D. datetime (`toLocaleString('en-NP')`), B.S. date (`convertToBS()`), cashier name (from `authStore`), invoice ID
+- Items table: Name | Qty | Unit Price | Total (with Nepali name if present)
+- Totals rows: Subtotal / Discount (if >0) / VAT 13% (or "Exempt") / TOTAL (emerald highlight)
+- Three payment method buttons at bottom: Cash | Digital QR | Split (placeholders)
+- Print button (Printer icon) → `window.print()`
+- Close button (X) top-right
+- Framer Motion animate-in/out (scale 0.95→1, opacity 0→1)
+
+### 16.2 Payment Modal (`PaymentModal.tsx`)
+- Shadcn `Dialog` — fullscreen on mobile (`w-full h-full max-w-full rounded-none`), centered card on desktop (`sm:max-w-2xl`)
+- Header: "Payment — Rs [total]" with X close button (Shadcn `DialogClose` handles Escape)
+- Discount input (Rs, min 0) — live updates totals below
+- Totals summary: Subtotal / Discount / VAT / TOTAL (recalculates on discount change)
+- Shadcn `Tabs` with three tabs:
+  - **Cash** — quick amount buttons (100/500/1000/2000/5000/Exact), "Complete Cash Payment" button (placeholder)
+  - **Digital QR** — QR code placeholder area, "Generate QR & Wait for Payment" button (placeholder)
+  - **Split** — two amount inputs, "Process Split Payment" button (placeholder)
+- "Preview Bill" button → opens `BillPreview` overlay
+- All tab content areas are placeholders marked "to be implemented in Phase 5/6/7"
+
+### 16.3 Keyboard Shortcuts
+- F2 key → opens Payment Modal (via `handleOpenPaymentModal` in `POSScreen.tsx`)
+- Escape → closes Payment Modal (handled by Shadcn `DialogClose` / `Dialog` overlay click)
+
+### 16.4 Pre-Payment Validation (in POS Screen)
+- Empty cart check before opening payment modal
+- Stock check — warns if any cart item has stock ≤ 0
+
+### 16.5 Verification
+- `npm run typecheck` — PASS (0 errors)
+- `npm run lint` — PASS (4 framer-motion motion-value warnings from CartSheet, expected)
+- `npm run build` — PASS (18 routes)
+
+---
+
 ## Standard Development Rules
 
 ### TypeScript

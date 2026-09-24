@@ -5,10 +5,12 @@ import { Search, ChevronDown, ChevronUp, Package, Barcode } from "lucide-react";
 import { useDebounce } from "@/hooks";
 import { useProductSearch } from "@/hooks/products/useProducts";
 import type { Product } from "@/types/product";
+import { cn } from "@/lib/utils";
 
 interface ProductSearchProps {
   onProductSelect: (product: Product) => void;
   placeholder?: string;
+  className?: string;
 }
 
 const STOCK_BADGE_VARIANTS = {
@@ -29,7 +31,7 @@ function getStockLabel(stock: number): string {
   return `${stock} in stock`;
 }
 
-export function ProductSearch({ onProductSelect, placeholder = "Search products by name or barcode..." }: ProductSearchProps) {
+export function ProductSearch({ onProductSelect, placeholder = "Search products by name or barcode...", className }: ProductSearchProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -119,7 +121,7 @@ export function ProductSearch({ onProductSelect, placeholder = "Search products 
   }, [searchQuery, searchResults]);
 
   return (
-    <div className="relative" ref={dropdownRef} role="combobox" aria-expanded={isDropdownOpen && searchResults.length > 0} aria-controls="product-search-results">
+    <div className={cn("relative", className)} ref={dropdownRef} role="combobox" aria-expanded={isDropdownOpen && searchResults.length > 0} aria-controls="product-search-results">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
         <input

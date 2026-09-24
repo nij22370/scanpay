@@ -3,8 +3,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useCartStore } from "./cartStore";
+import { useAuthStore } from "./authStore";
 
-export { useCartStore };
+export { useCartStore, useAuthStore };
 
 interface POSStore {
   selectedPaymentMethod: string | null;
