@@ -47,6 +47,21 @@ CREATE INDEX IF NOT EXISTS idx_transactions_payment_status ON transactions(payme
 CREATE INDEX IF NOT EXISTS idx_transactions_created_by ON transactions(created_by);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
 
+-- 2b. Transaction Items Table
+CREATE TABLE IF NOT EXISTS transaction_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  product_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  unit_price NUMERIC(10, 2) NOT NULL,
+  total_price NUMERIC(10, 2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_items_transaction ON transaction_items(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_items_product ON transaction_items(product_id);
+
 -- 3. Split Sessions Table
 CREATE TABLE IF NOT EXISTS split_sessions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -120,6 +135,15 @@ CREATE POLICY "Allow read split sessions"
 
 CREATE POLICY "Allow insert split sessions"
   ON split_sessions FOR INSERT
+  WITH CHECK (true);
+
+-- Transaction Items RLS Policies
+CREATE POLICY "Allow read transaction items"
+  ON transaction_items FOR SELECT
+  USING (true);
+
+CREATE POLICY "Allow insert transaction items"
+  ON transaction_items FOR INSERT
   WITH CHECK (true);
 
 -- Split Participants RLS Policies

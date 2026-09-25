@@ -349,6 +349,86 @@ Need bill preview overlay and payment modal frame with tabs for three payment me
 
 ---
 
+## ADR-018: Cash Payment Flow with Transaction Recording & Stock Deduction (Days 18–19)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-25 |
+
+**Context**:
+Need to implement the cash payment flow in the Payment Modal. Requirements:
+1. Cash tab with tendered amount input and live change calculation
+2. Server API to record transaction, transaction items, and deduct product stock atomically
+3. Cart store to track BS date for the transaction
+4. Database schema for transaction_items table
+
+**Decision**:
+1. **Cash Tab** (`PaymentModal.tsx`):
+   - Number input for cash tendered with `min={total}`, `step="0.01"`, auto-focus on tab switch via `useEffect`
+   - Live change display: `cashChange = tendered - total` (emerald if ≥0, rose if negative)
+   - "Confirm payment" button disabled until `tendered >= total`, shows loading spinner
+2. **Transaction API** (`src/app/api/transactions/route.ts`):
+   - Zod schema validates: `items[]` (product_id, product_name, quantity, unit_price, total_price), `subtotal`, `discount`, `vat`, `total`, `payment_mode: "cash"`, `cash_tendered`, `cash_change`, `cashier_id`, optional `split_id`
+   - Insert transaction with generated `transaction_number` (TXN- + base36 timestamp)
+   - Bulk insert `transaction_items` with FK to transaction and product
+   - Stock deduction: `Promise.all` over items — fetch current stock per product, compute `newStock = max(0, current - quantity)`, update products table
+   - Returns `{ transactionId }` on success (201); rolls back transaction on items error
+3. **Cart Store** (`src/store/cartStore.ts`):
+   - Added `bsDate` field set on first `addItem` via `convertToBS(new Date())`
+4. **Schema** (`supabase/schema.sql`):
+   - Added `transaction_items` table with `id`, `transaction_id` (FK), `product_id` (FK), `product_name`, `quantity`, `unit_price`, `total_price`, `created_at`
+   - Indexes on `transaction_id` and `product_id`
+   - RLS policies for read/insert
+5. **Types** (`src/types/transaction.ts`):
+   - `TransactionWithItems` extends `Transaction` with `items: TransactionItem[]`
+
+**Consequences**: Atomic transaction + stock deduction prevents overselling; cash flow completes in single API call; BS date captured at cart creation; all TypeScript strict, no `any`.
+
+---
+
+## ADR-019: Thermal-Style Slip Page & PDF Generator (Day 20)
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-25 |
+
+**Context**:
+Need a printable thermal receipt page and PDF download for completed cash transactions. Requirements:
+1. Server-rendered slip page at `/slip/[id]` fetching transaction data
+2. Client component with thermal receipt aesthetic (380px max-width, monospace, dashed sections)
+3. PDF generator matching thermal printer format (80mm width, Courier font)
+4. Print styles to hide UI chrome and size correctly for thermal printers
+5. Support for Nepali (Devanagari) characters in product names
+
+**Decision**:
+1. **Server Page** (`src/app/slip/[id]/page.tsx`):
+   - Server component fetches via `GET /api/transactions/[id]` (no-store)
+   - Renders `SlipTemplate` client component
+   - 404 if transaction not found
+2. **Slip Template** (`src/components/slip/SlipTemplate.tsx`):
+   - Thermal design: max-w 380px, `font-mono`, `text-slate-800`, dashed borders
+   - Sections: header (success badge, store info), transaction details, items table, amounts breakdown, cash section (conditional), barcode+QR, footer
+   - Responsive typography scaling
+3. **PDF Generator** (`src/lib/slip-pdf.ts`):
+   - `buildSlipPDF(transaction: TransactionWithItems): jsPDF`
+   - 80mm width, Courier font, text sanitization preserves Devanagari range
+   - `wrapText` helper for long product names
+   - Layout mirrors SlipTemplate with color support (green/red)
+4. **Print CSS** (`src/app/globals.css`):
+   - `@media print` with `@page { size: 80mm auto; margin: 0; }`
+   - Hides `print:hidden`, removes padding/shadows/borders via `print:` utilities
+   - `print-color-adjust: exact` for thermal printer colors
+   - Constrains width to 80mm
+5. **Hook & Types**:
+   - `useSlip.ts` fetches transaction + items (returns `TransactionWithItems`)
+   - `TransactionWithItems` adds `cash_tendered?`, `cash_change?`
+
+**Consequences**: Server-side rendering for SEO/accessibility; client PDF generation matches print output; Nepali text support; thermal printer optimized; reusable `SlipTemplate` + `buildSlipPDF` for both display and download.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

@@ -287,4 +287,105 @@ flowchart TD
 
 ```
 [Cart Items] → [useCartTotals] → [Subtotal + VAT Applicable] → [Discount] → [VAT Calc] → [Total] → [Format] → [Return] → [CartSheet, CartPanel, BillPreview, PaymentModal]
+
+---
+
+## 13. Cash Payment Flow (Days 18–19)
+
+```mermaid
+sequenceDiagram
+    participant U as Cashier
+    participant P as POS Page
+    participant PM as PaymentModal
+    participant C as Cart (Zustand)
+    participant A as Auth Store
+    participant API as /api/transactions
+    participant DB as Supabase
+    participant S as Slip Page
+
+    U->>P: Tap F2 / Pay button
+    P->>P: Pre-validation: cart items > 0, all stock > 0
+    P->>PM: Open PaymentModal (Dialog)
+    PM->>C: Read items, subtotal, bsDate
+    PM->>A: Read cashierName, cashierId
+    PM->>PM: Calculate totals (discount, VAT, total)
+    U->>PM: Select Cash tab
+    PM->>PM: Auto-focus tendered input
+    U->>PM: Enter cash tendered amount
+    PM->>PM: Live calculate change (tendered - total)
+    U->>PM: Tap "Confirm payment" (enabled if tendered >= total)
+    PM->>API: POST /api/transactions {items, subtotal, discount, vat, total, payment_mode: "cash", cash_tendered, cash_change, cashier_id}
+    API->>DB: Insert transaction
+    API->>DB: Insert transaction_items
+    API->>DB: Promise.all stock deduction (products.stock -= quantity)
+    DB-->>API: Success
+    API-->>PM: { transactionId }
+    PM->>C: clearCart()
+    PM->>S: router.push(`/slip/${transactionId}`)
+    S-->>U: Show thermal receipt
+```
+
+```
+[POS Page] → [F2/Pay] → [Pre-validation] → [PaymentModal] → [Cart + Auth Store] → [Cash Tab] → [Tendered Input] → [Change Calc] → [Confirm] → [POST /api/transactions] → [Transaction + Items + Stock] → [Clear Cart] → [Navigate to Slip]
+```
+
+---
+
+## 14. Slip Generation Flow (Day 20)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as /slip/[id] Page
+    participant API as /api/transactions/[id]
+    participant DB as Supabase
+    participant ST as SlipTemplate
+    participant PDF as buildSlipPDF
+
+    U->>S: Navigate to /slip/:id
+    S->>API: GET /api/transactions/:id (no-store)
+    API->>DB: Select transaction + transaction_items
+    DB-->>API: TransactionWithItems
+    API-->>S: JSON response
+    S->>ST: Render with transaction data
+    ST-->>U: Display thermal receipt (HTML)
+    U->>ST: Click "PDF" button
+    ST->>PDF: buildSlipPDF(transaction)
+    PDF-->>U: Download receipt-{transaction_number}.pdf
+    U->>ST: Click "Print" button
+    ST->>ST: window.print()
+    ST-->>U: Print dialog (thermal 80mm)
+```
+
+```
+[Slip Page] → [GET /api/transactions/:id] → [Transaction + Items] → [SlipTemplate] → [HTML Render] → [PDF Button] → [buildSlipPDF] → [jsPDF Download] / [Print Button] → [window.print] → [Thermal Printer]
+```
+
+---
+
+## 15. Slip Template Shared Rendering Flow
+
+```mermaid
+flowchart TD
+    A["TransactionWithItems"] --> B["SlipTemplate (React)"]
+    A --> C["buildSlipPDF (jsPDF)"]
+    B --> D["Header: Store + BS Date + Txn #"]
+    B --> E["Items Table (wrapped names)"]
+    B --> F["Amounts: Subtotal/Discount/VAT/Total"]
+    B --> G["Cash Section (conditional)"]
+    B --> H["Barcode + QR"]
+    B --> I["Footer"]
+    C --> D
+    C --> E
+    C --> F
+    C --> G
+    C --> H
+    C --> I
+    D --> J["Screen Display"]
+    I --> K["PDF Download"]
+    I --> L["Print (80mm)"]
+```
+
+```
+[Transaction] → [SlipTemplate + buildSlipPDF] → [Header, Items, Amounts, Cash, Barcode/QR, Footer] → [Screen / PDF / Print]
 ```

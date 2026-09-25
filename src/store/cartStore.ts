@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Product } from "@/types/product";
+import { convertToBS } from "@/lib/nepali-date";
 
 interface CartItem {
   product: Product;
@@ -12,6 +13,7 @@ interface CartItem {
 interface CartStore {
   items: CartItem[];
   cashierNote: string;
+  bsDate: string | null;
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -26,6 +28,7 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       cashierNote: "",
+      bsDate: null,
       addItem: (product) => {
         const items = get().items;
         const existing = items.find((i) => i.product.id === product.id);
@@ -38,7 +41,8 @@ export const useCartStore = create<CartStore>()(
             ),
           });
         } else {
-          set({ items: [...items, { product, quantity: 1 }] });
+          const newBsDate = get().bsDate ?? convertToBS(new Date());
+          set({ items: [...items, { product, quantity: 1 }], bsDate: newBsDate });
         }
       },
       removeItem: (productId) =>
@@ -54,7 +58,7 @@ export const useCartStore = create<CartStore>()(
           });
         }
       },
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], bsDate: null }),
       setCashierNote: (note) => set({ cashierNote: note }),
       getSubtotal: () =>
         get().items.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
