@@ -36,9 +36,9 @@ graph LR
 |---|---|
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
-| **Status** | ✅ Days 1–17 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI, **POS Cart UI + Scanner + Bill Preview + Payment Modal** |
-| **Last commit** | `1603529` on `main` |
-| **Pending** | Days 4–13 on local workspace |
+| **Status** | ✅ Days 1–20 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI, POS Cart UI + Scanner + Bill Preview + Payment Modal, **Cash Payment Flow + Transaction Recording + Stock Deduction**, **Thermal Slip Page + PDF Generator** |
+| **Last commit** | `0ef0cdc` on `feat/cash-payment-slip` |
+| **Pending** | None — all Days 1-20 complete |
 | **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
 
 ---
@@ -235,6 +235,69 @@ graph LR
   - Escape → closes Payment Modal (Shadcn `DialogClose` / overlay click)
 - [x] **Pre-Payment Validation**: Empty cart check + stock check before opening payment modal
 - [x] **Verification**: `npm run typecheck` PASS, `npm run lint` PASS (4 framer-motion warnings expected), `npm run build` PASS (18 routes)
+
+---
+
+## ✅ Completed (Days 18–19 — Cash Payment Flow with Transaction Recording & Stock Deduction)
+
+- [x] **Cash Tab Implementation** (`src/components/pos/PaymentModal.tsx`):
+  - Tendered number input with `min={total}` and `step="0.01"`, auto-focused when Cash tab selected
+  - Live change calculation: "Change: Rs X.XX" (emerald if positive, rose if negative)
+  - "Confirm payment" button disabled until `tendered >= total`, loading spinner during processing
+  - Auto-focus on tab switch via `useEffect` watching `activeTab`
+- [x] **Transaction API Route** (`src/app/api/transactions/route.ts`):
+  - POST handler validates cash payload with Zod schema (`items[]`, `subtotal`, `discount`, `vat`, `total`, `payment_mode: "cash"`, `cash_tendered`, `cash_change`, `cashier_id`, optional `split_id`)
+  - Inserts transaction record with `transaction_number` (TXN- + base36 timestamp), amounts, payment info, cashier
+  - Bulk inserts `transaction_items` with product_id, product_name, quantity, unit_price, total_price
+  - Stock deduction via `Promise.all`: fetches current stock, computes `newStock = max(0, current - quantity)`, updates products table
+  - Returns `{ transactionId }` on success (201)
+  - Error handling: Zod validation (400), transaction/items errors with rollback (400), catch-all (500)
+  - GET handler lists transactions with optional filters (status, payment_provider, date range)
+- [x] **Transaction Detail API** (`src/app/api/transactions/[id]/route.ts`):
+  - GET handler fetches transaction by ID + joined `transaction_items` ordered by created_at
+- [x] **Cart Store Update** (`src/store/cartStore.ts`):
+  - Added `bsDate` field — set on first `addItem` via `convertToBS(new Date())`
+- [x] **Schema Updates**:
+  - `supabase/schema.sql`: Added `transaction_items` table with FKs, indexes, RLS policies
+  - `src/types/transaction.ts`: Added `TransactionWithItems` interface with `items: TransactionItem[]`
+- [x] **Verification**: `npm run typecheck` PASS, `npm run lint` PASS, `npm run build` PASS (18 routes)
+
+---
+
+## ✅ Completed (Day 20 — Thermal-Style Slip Page & PDF Generator)
+
+- [x] **Server-Side Slip Page** (`src/app/slip/[id]/page.tsx`):
+  - Server component fetches transaction via `GET /api/transactions/[id]` (no-store cache)
+  - Renders `SlipTemplate` client component with full transaction data
+  - Returns 404 if transaction not found
+- [x] **Client Slip Template** (`src/components/slip/SlipTemplate.tsx`):
+  - Thermal receipt design: max-width 380px, `font-mono`, `text-slate-800`
+  - Dashed borders (`border-dashed border-slate-300`) between sections
+  - Header: "PAYMENT SUCCESSFUL" badge, store name/address/VAT, transaction number, BS date, payment method, cashier
+  - Items table: Name | Qty | Amount (right-aligned), `divide-y divide-slate-100`
+  - Amounts: Subtotal / Discount (red if >0) / Taxable / VAT 13% / GRAND TOTAL (emerald, bold)
+  - Cash section (when payment_method === "cash"): Cash Tendered / Change (emerald)
+  - Barcode (Code 128) + QR (verification URL) centered
+  - Footer: "Dhanyabad! Thank you for your visit." + "Powered by ScanPay Nepal"
+  - Responsive: `text-xs sm:text-sm`, `text-[9px] sm:text-[10px]` for mobile
+- [x] **PDF Generator** (`src/lib/slip-pdf.ts`):
+  - `buildSlipPDF(transaction: TransactionWithItems): jsPDF`
+  - Thermal paper format: 80mm width, auto height (200mm initial)
+  - Font: Courier (monospace) with text sanitization for Nepali characters (Devanagari range `\u0900-\u097F`)
+  - Text wrapping for long product names (`wrapText` helper)
+  - Layout mirrors SlipTemplate: header, transaction details, wrapped items, amounts, cash tendered/change, barcode placeholder, footer
+  - Color support: green for success/total, red for discount
+- [x] **Print Styles** (`src/app/globals.css`):
+  - `@media print` rules: `@page { size: 80mm auto; margin: 0; }`
+  - Hides action bar (`print:hidden`), removes shadows/borders/padding (`print:p-0`, `print:shadow-none`, `print:border-none`)
+  - Forces exact color printing (`print-color-adjust: exact`)
+  - Constrains max-width to 80mm for thermal printer output
+  - Preserves dashed borders, colors, and layout
+- [x] **Hook & Type Updates**:
+  - `src/hooks/useSlip.ts`: Updated to fetch transaction + items together (returns `TransactionWithItems`)
+  - `src/types/transaction.ts`: Added `cash_tendered?` and `cash_change?` to `TransactionWithItems`
+  - `src/components/slip/SlipDisplay.tsx`: Uses `SlipTemplate` + `buildSlipPDF` for PDF download
+- [x] **Verification**: `npm run typecheck` PASS, `npm run lint` PASS, `npm run build` PASS (19 routes including dynamic `/slip/[id]`)
 
 ---
 

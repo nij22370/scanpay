@@ -368,6 +368,85 @@ Created all required folders with placeholder `index.ts` files:
 
 ---
 
+## Days 18–19 — Cash Payment Flow with Transaction Recording & Stock Deduction
+
+### 18.1 Cash Tab Implementation (`PaymentModal.tsx`)
+- **Tendered Input**: Number input with `min={total}` and `step="0.01"`, auto-focused when Cash tab is selected
+- **Live Change Calculation**: Shows "Change: Rs X.XX" in emerald (positive) or rose (negative if tendered < total)
+- **Confirm Button**: "Confirm payment" button disabled until `tendered >= total`, shows loading spinner during processing
+- **Keyboard**: Auto-focus on tab switch via `useEffect` watching `activeTab`
+
+### 18.2 Transaction API Route (`src/app/api/transactions/route.ts`)
+- **POST Handler**: Validates cash payload with Zod schema (`items[]`, `subtotal`, `discount`, `vat`, `total`, `payment_mode: "cash"`, `cash_tendered`, `cash_change`, `cashier_id`, optional `split_id`)
+- **Transaction Insert**: Creates transaction record with `transaction_number` (TXN- + base36 timestamp), amounts, payment info, cashier
+- **Transaction Items**: Bulk inserts into `transaction_items` table with product_id, product_name, quantity, unit_price, total_price
+- **Stock Deduction**: `Promise.all` over items — fetches current stock, computes `newStock = max(0, current - quantity)`, updates products table
+- **Response**: Returns `{ transactionId }` on success (201)
+- **Error Handling**: Zod validation errors (400), transaction/items errors with rollback (400), catch-all (500)
+- **GET Handler**: Lists transactions with optional filters (status, payment_provider, date range)
+
+### 18.3 Transaction Detail API (`src/app/api/transactions/[id]/route.ts`)
+- **GET Handler**: Fetches transaction by ID + joined `transaction_items` ordered by created_at
+
+### 18.4 Cart Store Update (`src/store/cartStore.ts`)
+- Added `bsDate` field to cart state — set on first `addItem` via `convertToBS(new Date())`
+
+### 18.5 Schema Updates
+- `supabase/schema.sql`: Added `transaction_items` table with FK to `transactions` and `products`, indexes, RLS policies
+- `src/types/transaction.ts`: Added `TransactionWithItems` interface extending `Transaction` with `items: TransactionItem[]`
+
+### 18.6 Verification
+- `npm run typecheck` — PASS (0 errors)
+- `npm run lint` — PASS (0 errors, only pre-existing CartSheet warnings)
+- `npm run build` — PASS (18 routes)
+
+---
+
+## Day 20 — Thermal-Style Slip Page & PDF Generator
+
+### 20.1 Server-Side Slip Page (`src/app/slip/[id]/page.tsx`)
+- Server component fetches transaction via `GET /api/transactions/[id]` (no-store cache)
+- Renders `SlipTemplate` client component with full transaction data
+- Returns 404 if transaction not found
+
+### 20.2 Client Slip Template (`src/components/slip/SlipTemplate.tsx`)
+- Thermal receipt design: max-width 380px, `font-mono`, `text-slate-800`
+- Dashed borders (`border-dashed border-slate-300`) between sections
+- Header: "PAYMENT SUCCESSFUL" badge, store name/address/VAT, transaction number, BS date, payment method, cashier
+- Items table: Name | Qty | Amount (right-aligned), `divide-y divide-slate-100`
+- Amounts: Subtotal / Discount (red if >0) / Taxable / VAT 13% / GRAND TOTAL (emerald, bold)
+- Cash section (when payment_method === "cash"): Cash Tendered / Change (emerald)
+- Barcode (Code 128) + QR (verification URL) centered
+- Footer: "Dhanyabad! Thank you for your visit." + "Powered by ScanPay Nepal"
+- Responsive: `text-xs sm:text-sm`, `text-[9px] sm:text-[10px]` for mobile
+
+### 20.3 PDF Generator (`src/lib/slip-pdf.ts`)
+- `buildSlipPDF(transaction: TransactionWithItems): jsPDF`
+- Thermal paper format: 80mm width, auto height (200mm initial)
+- Font: Courier (monospace) with text sanitization for Nepali characters (Devanagari range `\u0900-\u097F`)
+- Text wrapping for long product names (`wrapText` helper)
+- Layout mirrors SlipTemplate: header, transaction details, wrapped items, amounts, cash tendered/change, barcode placeholder, footer
+- Color support: green for success/total, red for discount
+
+### 20.4 Print Styles (`src/app/globals.css`)
+- `@media print` rules: `@page { size: 80mm auto; margin: 0; }`
+- Hides action bar (`print:hidden`), removes shadows/borders/padding (`print:p-0`, `print:shadow-none`, `print:border-none`)
+- Forces exact color printing (`print-color-adjust: exact`)
+- Constrains max-width to 80mm for thermal printer output
+- Preserves dashed borders, colors, and layout
+
+### 20.5 Hook & Type Updates
+- `src/hooks/useSlip.ts`: Updated to fetch transaction + items together (returns `TransactionWithItems`)
+- `src/types/transaction.ts`: Added `cash_tendered?` and `cash_change?` to `TransactionWithItems`
+- `src/components/slip/SlipDisplay.tsx`: Uses `SlipTemplate` + `buildSlipPDF` for PDF download
+
+### 20.6 Verification
+- `npm run typecheck` — PASS (0 errors)
+- `npm run lint` — PASS (0 errors, only pre-existing CartSheet warnings)
+- `npm run build` — PASS (19 routes including dynamic `/slip/[id]`)
+
+---
+
 ## Standard Development Rules
 
 ### TypeScript
