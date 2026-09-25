@@ -24,6 +24,8 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 export interface TransactionWithItems extends Transaction {
   items: TransactionItem[];
+  cash_tendered?: number;
+  cash_change?: number;
 }
 
 export interface TransactionItem {
