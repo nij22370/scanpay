@@ -85,16 +85,13 @@ export function verifyEsewaResponse(responseData: string): EsewaVerifyResponse |
 
 export function buildEsewaUrl(payload: EsewaPayload): string {
   const params = new URLSearchParams();
-  params.set("total_amount", payload.total_amount);
-  params.set("transaction_uuid", payload.transaction_uuid);
+  params.set("amount", payload.total_amount);
   params.set("product_code", payload.product_code);
-  params.set("product_service_charge", payload.product_service_charge);
-  params.set("product_delivery_charge", payload.product_delivery_charge);
-  params.set("tax_amount", payload.tax_amount);
+  params.set("transaction_uuid", payload.transaction_uuid);
   params.set("success_url", payload.success_url);
   params.set("failure_url", payload.failure_url);
   params.set("signed_fields", payload.signed_fields);
   params.set("signature", payload.signature);
 
-  return `esewa://pay?${params.toString()}`;
+  return `${environment.esewaGatewayUrl}?${params.toString()}`;
 }
