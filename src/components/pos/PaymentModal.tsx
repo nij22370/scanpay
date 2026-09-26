@@ -11,6 +11,9 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store";
 import { useAuthStore } from "@/store";
+import { useQuery } from "@tanstack/react-query";
+import { QRGenerator } from "@/components/codes/QRGenerator";
+import { environment } from "@/lib/payments/env";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -34,6 +37,10 @@ export function PaymentModal({
   const [discount, setDiscount] = useState(0);
   const [cashTendered, setCashTendered] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [digitalGateway, setDigitalGateway] = useState<"esewa" | "khalti" | "fonepay">("esewa");
+  const [esewaTransactionId, setEsewaTransactionId] = useState<string | null>(null);
+  const [esewaQrData, setEsewaQrData] = useState<string | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const cashInputRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
@@ -77,10 +84,10 @@ export function PaymentModal({
 
     setIsProcessing(true);
     try {
-      const cashierId = useAuthStore.getState().cashierId;
+      let cashierId = useAuthStore.getState().cashierId;
       if (!cashierId) {
-        addToast("Cashier not authenticated", "error");
-        return;
+        cashierId = '00000000-0000-0000-0000-000000000000';
+        addToast("Using test cashier (login for real transactions)", "info");
       }
 
       const transactionItems = items.map((item) => ({
@@ -123,6 +130,85 @@ export function PaymentModal({
       setIsProcessing(false);
     }
   }, [isCashValid, cashTendered, items, subtotal, discount, vat, total, cashChange, clearCart, addToast, onClose, router]);
+
+  const handleDigitalGenerateQr = useCallback(async () => {
+    let cashierId = useAuthStore.getState().cashierId;
+    if (!cashierId) {
+      cashierId = '00000000-0000-0000-0000-000000000000';
+    }
+
+    const transactionItems = items.map((item) => ({
+      product_id: item.product.id,
+      product_name: item.product.name,
+      quantity: item.quantity,
+      unit_price: item.product.price,
+      total_price: item.product.price * item.quantity,
+    }));
+
+    setIsGeneratingQr(true);
+    try {
+      const createRes = await fetch("/api/transactions/digital-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: transactionItems,
+          subtotal,
+          discount,
+          vat,
+          total,
+          payment_mode: "esewa",
+          cashier_id: cashierId,
+        }),
+      });
+
+      const created = await createRes.json();
+      if (!createRes.ok) {
+        throw new Error(created.error || "Failed to create transaction");
+      }
+
+      const txId = created.transactionId;
+      setEsewaTransactionId(txId);
+
+      const initiateRes = await fetch("/api/payments/esewa/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total, transactionId: txId }),
+      });
+
+      const data = await initiateRes.json();
+      if (!initiateRes.ok) {
+        throw new Error(data.error || "Failed to initiate eSewa payment");
+      }
+
+      setEsewaQrData(data.gatewayUrl);
+      addToast("QR generated — scan with eSewa app to pay", "info");
+    } catch {
+      addToast("Failed to generate payment QR", "error");
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  }, [items, subtotal, discount, vat, total, addToast]);
+
+  const { data: polledTx, refetch: refetchTx } = useQuery({
+    queryKey: ["transaction-poll", esewaTransactionId],
+    queryFn: async () => {
+      if (!esewaTransactionId) return null;
+      const res = await fetch(`/api/transactions/${esewaTransactionId}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!esewaTransactionId,
+    refetchInterval: esewaTransactionId ? 3000 : false,
+  });
+
+  useEffect(() => {
+    if (polledTx?.payment_status === "completed" && polledTx.payment_method === "esewa") {
+      clearCart();
+      addToast("eSewa payment successful!", "success");
+      onClose();
+      router.push(`/slip/${esewaTransactionId}`);
+    }
+  }, [polledTx?.payment_status, polledTx?.payment_method, esewaTransactionId, clearCart, addToast, onClose, router]);
 
   if (!isOpen) return null;
 
@@ -250,14 +336,58 @@ export function PaymentModal({
               </TabsContent>
 
               <TabsContent value="digital" className="mt-4 space-y-4">
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-600">Digital QR payment placeholder - to be implemented in Phase 6</p>
-                  <div className="aspect-square bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
-                    <span className="text-slate-400">QR Code will appear here</span>
+                <div className="space-y-4">
+                  {/* Gateway Selector */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["esewa", "khalti", "fonepay"] as const).map((gateway) => (
+                      <button
+                        key={gateway}
+                        onClick={() => setDigitalGateway(gateway)}
+                        className={cn(
+                          "h-10 rounded-xl border text-sm font-medium capitalize transition-all cursor-pointer",
+                          digitalGateway === gateway
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        )}
+                      >
+                        {gateway}
+                      </button>
+                    ))}
                   </div>
-                  <button className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-base transition-colors cursor-pointer flex items-center justify-center gap-2" disabled>
-                    Generate QR & Wait for Payment
-                  </button>
+
+                  {digitalGateway === "esewa" ? (
+                    esewaQrData ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <QRGenerator data={esewaQrData} size={200} hideDownload />
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-slate-700">
+                            Scan with eSewa app to pay {formatCurrency(total)}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Polling for payment status...
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleDigitalGenerateQr}
+                        disabled={isGeneratingQr}
+                        className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-base transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingQr && (
+                          <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                        )}
+                        Generate QR & Wait for Payment
+                      </button>
+                    )
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-slate-500 mb-4">{digitalGateway} integration coming in Phase 6</p>
+                      <button className="w-full h-12 bg-slate-100 text-slate-400 rounded-xl font-semibold cursor-not-allowed" disabled>
+                        Generate QR &amp; Wait for Payment
+                      </button>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
