@@ -21,8 +21,9 @@ const pendingTransactionSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  let body: unknown;
   try {
-    const body = await req.json();
+    body = await req.json();
     const parsed = pendingTransactionSchema.parse(body);
 
     const { items, subtotal, discount, vat, total, payment_mode, cashier_id } = parsed;
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ transactionId: transaction.id }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors.map((e) => e.message).join(", ") }, { status: 400 });
+      return NextResponse.json({ error: error.errors.map((e) => e.message).join(", "), issues: error.errors, received: body }, { status: 400 });
     }
     const errMsg = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: errMsg }, { status: 500 });

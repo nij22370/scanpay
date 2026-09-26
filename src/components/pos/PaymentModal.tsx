@@ -85,7 +85,7 @@ export function PaymentModal({
     setIsProcessing(true);
     try {
       let cashierId = useAuthStore.getState().cashierId;
-      if (!cashierId) {
+      if (!cashierId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cashierId)) {
         cashierId = '00000000-0000-0000-0000-000000000000';
         addToast("Using test cashier (login for real transactions)", "info");
       }
@@ -131,9 +131,9 @@ export function PaymentModal({
     }
   }, [isCashValid, cashTendered, items, subtotal, discount, vat, total, cashChange, clearCart, addToast, onClose, router]);
 
-  const handleDigitalGenerateQr = useCallback(async () => {
+   const handleDigitalGenerateQr = useCallback(async () => {
     let cashierId = useAuthStore.getState().cashierId;
-    if (!cashierId) {
+    if (!cashierId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cashierId)) {
       cashierId = '00000000-0000-0000-0000-000000000000';
     }
 
@@ -147,6 +147,16 @@ export function PaymentModal({
 
     setIsGeneratingQr(true);
     try {
+      const payload = {
+        items: transactionItems,
+        subtotal,
+        discount,
+        vat,
+        total,
+        payment_mode: "esewa" as const,
+        cashier_id: cashierId,
+      };
+      console.log("Sending to digital-pending:", JSON.stringify(payload, null, 2));
       const createRes = await fetch("/api/transactions/digital-pending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -191,7 +201,7 @@ export function PaymentModal({
 
   const handleBrowserPayment = useCallback(async () => {
     let cashierId = useAuthStore.getState().cashierId;
-    if (!cashierId) {
+    if (!cashierId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cashierId)) {
       cashierId = '00000000-0000-0000-0000-000000000000';
     }
 
