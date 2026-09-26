@@ -182,8 +182,8 @@ export function PaymentModal({
 
       setEsewaQrData(data.gatewayUrl);
       addToast("QR generated — scan with eSewa app to pay", "info");
-    } catch {
-      addToast("Failed to generate payment QR", "error");
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Failed to generate payment QR", "error");
     } finally {
       setIsGeneratingQr(false);
     }
@@ -257,8 +257,8 @@ export function PaymentModal({
       document.body.removeChild(form);
 
       addToast("Opening eSewa payment in browser...", "info");
-    } catch {
-      addToast("Failed to open browser payment", "error");
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Failed to open browser payment", "error");
     } finally {
       setIsProcessing(false);
     }
