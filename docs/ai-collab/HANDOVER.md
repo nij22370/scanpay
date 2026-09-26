@@ -37,9 +37,29 @@ graph LR
 | **Project** | ScanPay — Nepal payment gateway integration platform |
 | **Framework** | Next.js 14 (App Router, TypeScript strict mode) |
 | **Status** | ✅ Days 1–20 complete — scaffold, auth, layout, code engine, scanner, products CRUD, inventory manager, responsive QA, POS cart & search, Split Bill UI, Printable Slip UI & Financial Reports UI, POS Cart UI + Scanner + Bill Preview + Payment Modal, **Cash Payment Flow + Transaction Recording + Stock Deduction**, **Thermal Slip Page + PDF Generator** |
-| **Last commit** | `0ef0cdc` on `feat/cash-payment-slip` |
-| **Pending** | None — all Days 1-20 complete |
-| **CI** | `tsc --noEmit` ✅ · `next lint` ✅ · `next build` ✅ |
+| **Last commit** | `76a7e17` on `feat/esewa-integration` — eSewa V2 API integration, payment page route, error handling improvements |
+| **Pending** | Khalti & FonePay integrations, production deployment, Supabase connection |
+
+### eSewa V2 Integration — In Progress → Complete
+- **Status**: ✅ Complete — eSewa V2 gateway verified working (302 redirect confirmed)
+- **Files modified/created**:
+  - `src/lib/payments/esewa.ts` — signature generation, payload builder, response verifier (all updated for V2 format: `signed_field_names`, `transaction_code`)
+  - `src/lib/payments/env.ts` — gateway URL → `https://rc-esewa.com.np/api/epay/main/v2/form`
+  - `src/app/api/payments/esewa/initiate/route.ts` — POST handler creates signed payload
+  - `src/app/api/payments/esewa/verify/route.ts` — GET+POST callback handlers, base64 decode + signature verification
+  - `src/app/api/payments/esewa/route.ts` — polling endpoint (TODO)
+  - `src/app/pay/esewa/[transactionId]/page.tsx` — auto-submitting payment page (NEW)
+  - `src/app/payment-failed/page.tsx` — fallback page for failed payments (NEW)
+  - `src/components/pos/PaymentModal.tsx` — Digital QR tab implementation with QR + browser payment
+  - `src/app/api/transactions/digital-pending/route.ts` — pending transaction creation
+  - `.env.local` — `NEXT_PUBLIC_APP_URL=http://localhost:3001`, V2 gateway URL
+- **Key decisions**:
+  - Payment page intermediary (`/pay/esewa/[id]`) instead of raw gateway URL in QR — eSewa gateway requires POST, QR can only carry GET URLs
+  - `signed_field_names` (V2) replaces `signed_fields` (V1)
+  - `transaction_code` (V2) replaces `txn_id` (V1) in verify response
+- **Known limitations**:
+  - eSewa mobile app's native QR scanner won't recognize payment page URLs — use phone camera instead
+  - Callback URLs use localhost (needs production URL in deployment)
 
 ---
 
@@ -238,7 +258,21 @@ graph LR
 
 ---
 
-## ✅ Completed (Days 18–19 — Cash Payment Flow with Transaction Recording & Stock Deduction)
+## ✅ Completed (Days 18–20 — Cash Payment, eSewa V2 & Thermal Slip)
+
+- [x] **Cash Tab** (`PaymentModal.tsx`): tendered input, live change, confirm button
+- [x] **Transaction API** (`src/app/api/transactions/route.ts`): validates, inserts, deducts stock
+- [x] **Digital-pending API** (`src/app/api/transactions/digital-pending/route.ts`): creates pending digital transaction
+- [x] **eSewa V2 Integration**:
+  - `src/lib/payments/esewa.ts`: HMAC-SHA256 signature (`total_amount,transaction_uuid,product_code`), payload builder, verify (base64-decoded response with signature verification)
+  - `src/lib/payments/env.ts`: `MERCHANT_CODE=EPAYTEST`, `SECRET_KEY=8gBm/:&EnhH.1/q`, gateway URL = `https://rc-epay.esewa.com.np/api/epay/main/v2/form` (V2 endpoint)
+  - `src/app/api/payments/esewa/initiate/route.ts`: POST handler, generates signed gateway URL
+  - `src/app/api/payments/esewa/verify/route.ts`: GET+POST handlers, decodes base64 `data` param, verifies signature, updates transaction status, redirects to slip page
+  - `src/app/pay/esewa/[transactionId]/page.ts`: Server page rendering auto-submitting POST form to eSewa V2 gateway
+  - QR code contains payment page URL (`{appUrl}/pay/esewa/{txId}`) — any phone camera can scan it
+  - "Pay via Browser" opens payment page in new tab with same auto-submit form
+- [x] **Thermal Slip** (`src/app/slip/[id]/page.tsx`, `SlipTemplate.tsx`, `src/lib/slip-pdf.ts`): thermal receipt design, jsPDF generator
+- [x] **Verification**: `tsc --noEmit` PASS, `next lint` PASS, `next build` PASS
 
 - [x] **Cash Tab Implementation** (`src/components/pos/PaymentModal.tsx`):
   - Tendered number input with `min={total}` and `step="0.01"`, auto-focused when Cash tab selected
@@ -305,10 +339,13 @@ graph LR
 
 - [ ] Set up Supabase project and run migrations (see `docs/supabase-setup.md`)
 - [ ] Build POS dashboard components
-- [ ] Implement payment gateway integrations (eSewa, Khalti, FonePay)
-- [ ] Build split-bill feature
-- [ ] Implement transaction and slip generation
+- [ ] Implement Khalti and FonePay payment gateway integrations
 - [ ] Connect login to actual Supabase auth backend (requires configured Supabase project)
+
+## 🚫 Blockers
+
+- **eSewa sandbox intermittent availability**: eSewa's sandbox gateway (`rc-epay.esewa.com.np`) may return "Service is currently unavailable" or 400/302 redirects under load — retry if this happens
+- **eSewa mobile app QR scanner limitation**: The app's native scanner only accepts eSewa merchant QR formats, not our payment page URLs. Use phone camera or "Pay via Browser" instead
 
 ## 🚫 Blockers
 

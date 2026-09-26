@@ -429,6 +429,41 @@ Need a printable thermal receipt page and PDF download for completed cash transa
 
 ---
 
+## ADR-020: eSewa V2 Payment Gateway Integration
+
+| | |
+|---|---|
+| **Status** | ✅ Accepted |
+| **Date** | 2026-09-26 |
+
+**Context**:
+The original eSewa integration used V1 API conventions which returned "Sorry, your request failed" and "This QR is not supported" errors. The eSewa mobile app scanner cannot directly process the gateway URL (which requires POST), and the V1 endpoint was rejecting requests.
+
+**Decision**:
+1. **Gateway URL**: Switch from `https://esewa.com.np/epay/main` (V1) to `https://rc-epay.esewa.com.np/api/epay/main/v2/form` (V2 staging endpoint).
+2. **Parameter names**: Use `signed_field_names` (not `signed_fields`) per V2 spec.
+3. **Required fields**: Include both `amount` (base amount) and `total_amount` (with charges) as V2 requires.
+4. **Payment page intermediary**: Create `/pay/esewa/[transactionId]` route that renders an auto-submitting POST form to eSewa's gateway. QR codes contain this page URL (GET-accessible) instead of the gateway URL directly (POST-only).
+5. **Response handling**: Verify callback uses `transaction_code` (V2) instead of `txn_id` (V1). Response signature verification uses `signed_field_names` from the response to build the verification message.
+6. **UUID validation**: Validate `cashier_id` is a proper UUID before sending to API, with test UUID fallback.
+
+**Consequences**:
+- QR codes can be scanned by any phone camera app — eSewa's native scanner only accepts eSewa merchant QR formats
+- "Pay via Browser" option opens the payment page in a new tab with the same auto-submit flow
+- Callback URLs use `localhost` for local development (requires production URL in deployment)
+- eSewa sandbox may return intermittent "Service is currently unavailable" errors — retry on failure
+- TanStack Query polling continues to check transaction status every 3 seconds while payment page is open
+
+### ADR-020.1: Signature Verification for Response
+
+**Context**: eSewa signs the callback response using the fields listed in `signed_field_names` from the response itself. The original implementation only verified using `total_amount,transaction_uuid,product_code` (request fields), but V2 response uses `transaction_code,status,total_amount,transaction_uuid,product_code,signed_field_names`.
+
+**Decision**: Parse `signed_field_names` from the decoded response, then build the signature message dynamically from those fields.
+
+**Consequences**: Correctly verifies eSewa callback authenticity; future-proof if eSewa changes the signed fields list.
+
+---
+
 ## 📝 How to Add a New ADR
 
 ```markdown

@@ -447,6 +447,58 @@ Created all required folders with placeholder `index.ts` files:
 
 ---
 
+## eSewa V2 Payment Integration
+
+### eSewa V2 Gateway Configuration
+- **Gateway URL**: `https://rc-esewa.com.np/api/epay/main/v2/form` (staging/test V2 endpoint)
+- **Merchant Code**: `EPAYTEST` (eSewa sandbox credentials)
+- **Secret Key**: `8gBm/:&EnhH.1/q` (server-side only via `SUPABASE_SERVICE_ROLE_KEY` env var pattern)
+- **Test User Credentials**: eSewa ID: `9711111111`, Password: `Nepal@123`, MPIN: `1122`, Token: `123456`
+
+### API Routes
+
+| Route | Method | Description |
+|---|---|---|
+| `/api/transactions/digital-pending` | POST | Creates a pending digital transaction in Supabase, returns `{ transactionId }`. Validates payload with Zod (items[], subtotal, discount, vat, total, payment_mode, cashier_id). |
+| `/api/payments/esewa/initiate` | POST | Fetches the pending transaction, builds signed eSewa V2 payload, returns `{ gatewayUrl }` with all required parameters and HMAC-SHA256 signature. |
+| `/api/payments/esewa/verify` | GET, POST | eSewa callback handler. Decodes base64 `data` param, verifies signature, updates transaction `payment_status` to "completed", redirects to `/slip/{id}` or `/payment-failed`. |
+| `/pay/esewa/[transactionId]` | GET | Server-rendered payment page with auto-submitting POST form to eSewa V2 gateway. Contains all payment parameters as hidden inputs with correct signature. |
+
+### eSewa V2 Signature Generation
+- **Algorithm**: HMAC-SHA256, base64 output
+- **Message format**: `total_amount=<amount>,transaction_uuid=<uuid>,product_code=<merchant_code>`
+- **Signed fields**: `total_amount,transaction_uuid,product_code` (specified in `signed_field_names` parameter)
+- **Amount format**: Decimal string with 2 places (e.g., `"100.00"`)
+
+### Payment Flow (Digital QR / Browser)
+1. User clicks "Generate QR" or "Pay via Browser" in PaymentModal
+2. `PaymentModal` calls `/api/transactions/digital-pending` → creates pending transaction
+3. Calls `/api/payments/esewa/initiate` → gets signed gateway URL
+4. Constructs payment page URL: `{appUrl}/pay/esewa/{transactionId}`
+5. For QR: QR code contains payment page URL
+6. For Browser: `window.open(paymentUrl, "_blank")`
+7. Payment page renders, auto-submits POST form to `https://rc-esewa.com.np/api/epay/main/v2/form`
+8. eSewa returns 302 redirect to payment page (login + payment)
+9. After payment, eSewa redirects to `/api/payments/esewa/verify?data=<base64>`
+10. Verify route decodes, verifies signature, updates transaction to "completed"
+11. Redirects user to `/slip/{id}` (thermal receipt with PDF download)
+
+### Architectural Decision: Payment Page Intermediary
+**Why**: eSewa's V2 gateway (`/api/epay/main/v2/form`) only accepts POST requests with form-encoded body. Raw QR codes contain URLs (GET-based), so the eSewa mobile app cannot directly process a GET URL. The `/pay/esewa/[id]` page acts as a bridge: it's a GET-friendly URL that renders a POST form auto-submitting to eSewa's gateway.
+
+**Trade-off**: QR codes can only be scanned by generic QR scanners (phone camera) — not eSewa's native app scanner, which expects eSewa-specific merchant QR formats. For sandbox testing, use "Pay via Browser" or any phone camera app.
+
+### Key Parameters Changed (V1 → V2 API Migration)
+| V1 (Old) | V2 (Current) |
+|---|---|
+| `https://esewa.com.np/epay/main` | `https://rc-esewa.com.np/api/epay/main/v2/form` |
+| `signed_fields` | `signed_field_names` |
+| No `amount` field | `amount` field required alongside `total_amount` |
+| `txn_id` in response | `transaction_code` in response |
+| `esewa://pay?...` deep link | `/{appUrl}/pay/esewa/{txId}` intermediary page |
+
+---
+
 ## Standard Development Rules
 
 ### TypeScript

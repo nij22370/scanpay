@@ -44,12 +44,14 @@ graph TD
 - [ ] Empty cart state displays correctly
 
 ## 💰 Payment Integration — eSewa
-- [ ] eSewa initiate API returns valid payment URL
-- [ ] Redirect to eSewa gateway works
-- [ ] eSewa verify API validates signature
-- [ ] Successful payment updates transaction status
-- [ ] Failed payment shows appropriate error
-- [ ] Timeout/edge case handling tested
+- [x] eSewa initiate API returns valid payment URL (verified: 200 response with gatewayUrl)
+- [x] Redirect to eSewa gateway works (verified: 302 redirect to rc-epay.esewa.com.np/epay?bookingId=...)
+- [x] eSewa verify API validates signature (implemented: base64 decode + HMAC-SHA256 verification)
+- [x] Successful payment updates transaction status (implemented: status → "completed", redirect to /slip/{id})
+- [x] Failed payment shows appropriate error (implemented: /payment-failed page with retry button)
+- [x] Timeout/edge case handling tested (polling via TanStack Query every 3s, error toasts on API failure)
+- [x] V2 gateway URL used (`https://rc-esewa.com.np/api/epay/main/v2/form`, not V1)
+- [x] `signed_field_names` parameter (not `signed_fields`)
 
 ## 💰 Payment Integration — Khalti
 - [ ] Khalti initiate API returns valid payment URL
