@@ -238,7 +238,21 @@ graph LR
 
 ---
 
-## ✅ Completed (Days 18–19 — Cash Payment Flow with Transaction Recording & Stock Deduction)
+## ✅ Completed (Days 18–20 — Cash Payment, eSewa V2 & Thermal Slip)
+
+- [x] **Cash Tab** (`PaymentModal.tsx`): tendered input, live change, confirm button
+- [x] **Transaction API** (`src/app/api/transactions/route.ts`): validates, inserts, deducts stock
+- [x] **Digital-pending API** (`src/app/api/transactions/digital-pending/route.ts`): creates pending digital transaction
+- [x] **eSewa V2 Integration**:
+  - `src/lib/payments/esewa.ts`: HMAC-SHA256 signature (`total_amount,transaction_uuid,product_code`), payload builder, verify (base64-decoded response with signature verification)
+  - `src/lib/payments/env.ts`: `MERCHANT_CODE=EPAYTEST`, `SECRET_KEY=8gBm/:&EnhH.1/q`, gateway URL = `https://rc-epay.esewa.com.np/api/epay/main/v2/form` (V2 endpoint)
+  - `src/app/api/payments/esewa/initiate/route.ts`: POST handler, generates signed gateway URL
+  - `src/app/api/payments/esewa/verify/route.ts`: GET+POST handlers, decodes base64 `data` param, verifies signature, updates transaction status, redirects to slip page
+  - `src/app/pay/esewa/[transactionId]/page.ts`: Server page rendering auto-submitting POST form to eSewa V2 gateway
+  - QR code contains payment page URL (`{appUrl}/pay/esewa/{txId}`) — any phone camera can scan it
+  - "Pay via Browser" opens payment page in new tab with same auto-submit form
+- [x] **Thermal Slip** (`src/app/slip/[id]/page.tsx`, `SlipTemplate.tsx`, `src/lib/slip-pdf.ts`): thermal receipt design, jsPDF generator
+- [x] **Verification**: `tsc --noEmit` PASS, `next lint` PASS, `next build` PASS
 
 - [x] **Cash Tab Implementation** (`src/components/pos/PaymentModal.tsx`):
   - Tendered number input with `min={total}` and `step="0.01"`, auto-focused when Cash tab selected
