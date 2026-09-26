@@ -431,7 +431,7 @@ export function PaymentModal({
                         <QRGenerator data={esewaQrData} size={200} hideDownload />
                         <div className="text-center">
                           <p className="text-sm font-medium text-slate-700">
-                            Scan with eSewa app to pay {formatCurrency(total)}
+                            Scan with any QR scanner to pay {formatCurrency(total)}
                           </p>
                           <p className="text-xs text-slate-400 mt-1">
                             Polling for payment status...
