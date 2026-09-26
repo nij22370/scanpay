@@ -156,7 +156,6 @@ export function PaymentModal({
         payment_mode: "esewa" as const,
         cashier_id: cashierId,
       };
-      console.log("Sending to digital-pending:", JSON.stringify(payload, null, 2));
       const createRes = await fetch("/api/transactions/digital-pending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -190,7 +189,8 @@ export function PaymentModal({
         throw new Error(data.error || "Failed to initiate eSewa payment");
       }
 
-      setEsewaQrData(data.gatewayUrl);
+      const paymentUrl = `${environment.appUrl}/pay/esewa/${txId}`;
+      setEsewaQrData(paymentUrl);
       addToast("QR generated — scan with eSewa app to pay", "info");
     } catch (error) {
       addToast(error instanceof Error ? error.message : "Failed to generate payment QR", "error");
@@ -248,23 +248,8 @@ export function PaymentModal({
         throw new Error(data.error || "Failed to initiate eSewa payment");
       }
 
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = data.gatewayUrl;
-      form.target = "_blank";
-
-      const payload = new URLSearchParams(new URL(data.gatewayUrl).search);
-      payload.forEach((value, key) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      const paymentUrl = `${environment.appUrl}/pay/esewa/${txId}`;
+      window.open(paymentUrl, "_blank", "noopener,noreferrer");
 
       addToast("Opening eSewa payment in browser...", "info");
     } catch (error) {

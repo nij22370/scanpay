@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifyEsewaResponse } from "@/lib/payments/esewa";
+import type { EsewaVerifyResponse } from "@/lib/payments/esewa";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const data = searchParams.get("data");
 
-  if (!data) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/payment-failed`);
+  let decoded: EsewaVerifyResponse | null = null;
+
+  if (data) {
+    decoded = verifyEsewaResponse(data);
   }
 
-  const decoded = verifyEsewaResponse(data);
+  if (!decoded) {
+    const totalAmount = searchParams.get("total_amount");
+    const txnUuid = searchParams.get("transaction_uuid");
+    const status = searchParams.get("status");
+    const txnId = searchParams.get("txn_id");
+
+    if (totalAmount && txnUuid && status && txnId) {
+      decoded = {
+        transaction_uuid: txnUuid,
+        total_amount: totalAmount,
+        status,
+        txn_id: txnId,
+      } as EsewaVerifyResponse;
+    }
+  }
 
   if (!decoded || decoded.status !== "COMPLETE") {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/payment-failed`);
   }
 
-  const { error } = await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from("transactions")
     .update({
       payment_status: "completed",
@@ -27,7 +44,7 @@ export async function GET(req: NextRequest) {
     .select()
     .single();
 
-  if (error) {
+  if (updateError) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/payment-failed`);
   }
 
