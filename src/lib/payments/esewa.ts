@@ -95,5 +95,6 @@ export function buildEsewaUrl(payload: EsewaPayload): string {
   params.set("failure_url", payload.failure_url);
   params.set("signed_fields", payload.signed_fields);
   params.set("signature", payload.signature);
-  return `${environment.esewaGatewayUrl}?${params.toString()}`;
+
+  return `esewa://pay?${params.toString()}`;
 }
