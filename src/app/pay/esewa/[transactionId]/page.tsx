@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildEsewaPayload } from "@/lib/payments/esewa";
 import type { Transaction } from "@/types/transaction";
 
+export const dynamic = "force-dynamic";
+
 export default async function EsewaPaymentPage({ params }: { params: Promise<{ transactionId: string }> }) {
   const { transactionId } = await params;
 
@@ -25,20 +27,16 @@ export default async function EsewaPaymentPage({ params }: { params: Promise<{ t
     .join("");
 
   return (
-    <html>
-      <head>
-        <title>Redirecting to eSewa…</title>
-      </head>
-      <body>
-        <form
-          id="esewa-form"
-          method="POST"
-          action={process.env.NEXT_PUBLIC_ESEWA_GATEWAY_URL || "https://esewa.com.np/epay/main"}
-        >
-          {hiddenInputs}
-        </form>
-        <script dangerouslySetInnerHTML={{ __html: "document.getElementById('esewa-form').submit()" }} />
-      </body>
-    </html>
+    <>
+      <title>Redirecting to eSewa…</title>
+      <form
+        id="esewa-form"
+        method="POST"
+        action={process.env.NEXT_PUBLIC_ESEWA_GATEWAY_URL || "https://esewa.com.np/epay/main"}
+      >
+        {hiddenInputs}
+      </form>
+      <script dangerouslySetInnerHTML={{ __html: "document.getElementById('esewa-form').submit()" }} />
+    </>
   );
 }
