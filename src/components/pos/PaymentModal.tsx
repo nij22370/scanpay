@@ -189,6 +189,81 @@ export function PaymentModal({
     }
   }, [items, subtotal, discount, vat, total, addToast]);
 
+  const handleBrowserPayment = useCallback(async () => {
+    let cashierId = useAuthStore.getState().cashierId;
+    if (!cashierId) {
+      cashierId = '00000000-0000-0000-0000-000000000000';
+    }
+
+    const transactionItems = items.map((item) => ({
+      product_id: item.product.id,
+      product_name: item.product.name,
+      quantity: item.quantity,
+      unit_price: item.product.price,
+      total_price: item.product.price * item.quantity,
+    }));
+
+    setIsProcessing(true);
+    try {
+      const createRes = await fetch("/api/transactions/digital-pending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: transactionItems,
+          subtotal,
+          discount,
+          vat,
+          total,
+          payment_mode: "esewa",
+          cashier_id: cashierId,
+        }),
+      });
+
+      const created = await createRes.json();
+      if (!createRes.ok) {
+        throw new Error(created.error || "Failed to create transaction");
+      }
+
+      const txId = created.transactionId;
+      setEsewaTransactionId(txId);
+
+      const initiateRes = await fetch("/api/payments/esewa/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total, transactionId: txId }),
+      });
+
+      const data = await initiateRes.json();
+      if (!initiateRes.ok) {
+        throw new Error(data.error || "Failed to initiate eSewa payment");
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.gatewayUrl;
+      form.target = "_blank";
+
+      const payload = new URLSearchParams(new URL(data.gatewayUrl).search);
+      payload.forEach((value, key) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      addToast("Opening eSewa payment in browser...", "info");
+    } catch {
+      addToast("Failed to open browser payment", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [items, subtotal, discount, vat, total, addToast]);
+
   const { data: polledTx, refetch: refetchTx } = useQuery({
     queryKey: ["transaction-poll", esewaTransactionId],
     queryFn: async () => {
@@ -366,19 +441,33 @@ export function PaymentModal({
                           <p className="text-xs text-slate-400 mt-1">
                             Polling for payment status...
                           </p>
+                          <button
+                            onClick={handleBrowserPayment}
+                            className="mt-2 text-xs text-primary hover:text-primary/80 font-medium cursor-pointer"
+                          >
+                            Or pay via browser
+                          </button>
                         </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={handleDigitalGenerateQr}
-                        disabled={isGeneratingQr}
-                        className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-base transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGeneratingQr && (
-                          <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
-                        )}
-                        Generate QR & Wait for Payment
-                      </button>
+                      <div className="space-y-2">
+                        <button
+                          onClick={handleDigitalGenerateQr}
+                          disabled={isGeneratingQr}
+                          className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-base transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingQr && (
+                            <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                          )}
+                          Generate QR & Wait for Payment
+                        </button>
+                        <button
+                          onClick={handleBrowserPayment}
+                          className="w-full h-12 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-base transition-colors cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          Pay via Browser
+                        </button>
+                      </div>
                     )
                   ) : (
                     <div className="text-center py-8">

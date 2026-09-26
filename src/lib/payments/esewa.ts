@@ -85,7 +85,7 @@ export function verifyEsewaResponse(responseData: string): EsewaVerifyResponse |
 
 export function buildEsewaUrl(payload: EsewaPayload): string {
   const params = new URLSearchParams();
-  params.set("amount", payload.total_amount);
+  params.set("total_amount", payload.total_amount);
   params.set("product_code", payload.product_code);
   params.set("transaction_uuid", payload.transaction_uuid);
   params.set("success_url", payload.success_url);
