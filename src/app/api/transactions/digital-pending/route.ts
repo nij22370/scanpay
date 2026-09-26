@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors.map((e) => e.message).join(", ") }, { status: 400 });
     }
-    return NextResponse.json({ error: "Failed to create pending transaction" }, { status: 500 });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }
