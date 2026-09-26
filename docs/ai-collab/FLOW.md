@@ -388,4 +388,56 @@ flowchart TD
 
 ```
 [Transaction] → [SlipTemplate + buildSlipPDF] → [Header, Items, Amounts, Cash, Barcode/QR, Footer] → [Screen / PDF / Print]
+
+---
+
+## 16. eSewa V2 Digital Payment Flow
+
+```mermaid
+sequenceDiagram
+    participant U as Cashier
+    participant PM as PaymentModal
+    participant CP as /pay/esewa/[id]
+    participant DPI as /api/transactions/digital-pending
+    participant INI as /api/payments/esewa/initiate
+    participant DB as Supabase
+    participant ES as eSewa V2 Gateway
+    participant VER as /api/payments/esewa/verify
+    participant S as /slip/[id]
+
+    U->>PM: F2 → Digital QR tab → "Generate QR"
+    PM->>DPI: POST {items, subtotal, discount, vat, total, payment_mode:"esewa", cashier_id}
+    DPI->>DB: Insert transaction (status: "pending")
+    DB-->>DPI: {transactionId}
+    DPI-->>PM: {transactionId}
+    PM->>INI: POST {amount, transactionId}
+    INI->>DB: Fetch transaction
+    INI->>INI: buildEsewaPayload(amount, transaction_number)
+    INI-->>PM: {gatewayUrl} (signed)
+    PM->>PM: setEsewaQrData(appUrl + "/pay/esewa/" + txId)
+    PM-->>U: QR code displayed
+    U->>ES: Phone scans QR → browser opens payment page
+    CP->>CP: Auto-submit POST form to rc-epay.esewa.com.np/api/epay/main/v2/form
+    ES-->>CP: 302 redirect to eSewa payment page
+    U->>ES: Enter eSewa credentials, complete payment
+    ES->>VER: Redirect to success_url?data=<base64 response>
+    VER->>VER: verifyEsewaResponse(data) — decode + signature verify
+    VER->>DB: Update transaction status → "completed"
+    VER-->>S: Redirect to /slip/{id}
+    S-->>U: Thermal receipt with PDF download
 ```
+
+```
+[PaymentModal] → [POST /api/transactions/digital-pending] → [Supabase transaction] → [POST /api/payments/esewa/initiate] → [Signed V2 payload] → [Payment page URL in QR] → [Phone scans → browser opens /pay/esewa/[id]] → [Auto-submit POST to eSewa V2 gateway] → [302 to eSewa payment page] → [Payment complete → eSewa callback] → [GET/POST /api/payments/esewa/verify] → [Decode + verify signature] → [Update DB status] → [Redirect to /slip/{id}]
+```
+
+### eSewa V2 Key Parameters
+
+| Parameter | Value | Notes |
+|---|---|---|
+| Gateway URL | `https://rc-epay.esewa.com.np/api/epay/main/v2/form` | Staging endpoint for V2 API |
+| Merchant code | `EPAYTEST` | Sandbox credentials |
+| Secret key | `8gBm/:&EnhH.1/q` | Server-side only |
+| Signature fields | `total_amount,transaction_uuid,product_code` | Order matters for signature |
+| Signature format | `total_amount=XX.XX,transaction_uuid=XXX,product_code=EPAYTEST` | HMAC-SHA256, base64 |
+| Response format | Base64-encoded JSON in `data` query param | Callback to success_url |
